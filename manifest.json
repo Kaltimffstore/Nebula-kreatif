@@ -1,0 +1,35 @@
+{
+  "name": "Nebula Kreatif",
+  "short_name": "Nebula",
+  "description": "Hub kreatif untuk game, tools, dan proyek digital",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f0f1b",
+  "theme_color": "#8b5cf6",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "icon-1024.png",
+      "sizes": "1024×1024",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "screenshot-1.png",
+      "sizes": "1280x720",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["games", "entertainment", "education"],
+  "lang": "id",
+  "dir": "ltr",
+  "scope": "/"
+}
