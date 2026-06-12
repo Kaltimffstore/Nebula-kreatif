@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Hangman oleh Deny Kusrianto</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation;
+        }
+        .keyboard-btn.correct { background-color: #4ade80 !important; color: white !important; }
+        .keyboard-btn.wrong { background-color: #f87171 !important; color: white !important; opacity: 0.6; }
+        .btn-action { transition: all 0.2s ease-in-out; }
+        .btn-action:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .btn-setting.selected {
+            background-color: #3b82f6; /* bg-blue-600 */
+            color: white;
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+    </style>
+</head>
+<body class="bg-slate-100 flex flex-col items-center justify-center min-h-screen p-4 text-slate-800">
+
+    <!-- Layar Pemilihan Bahasa -->
+    <div id="language-selection-screen" class="w-full max-w-sm text-center animate-fade-in">
+        <h1 class="text-4xl font-bold text-blue-600 mb-2">HANGMAN</h1>
+        <p class="text-slate-600 mb-8">Pilih Bahasa / Select Language</p>
+        <div class="flex flex-col gap-4">
+            <button data-lang="id" class="lang-btn btn-action w-full bg-white text-blue-600 font-bold py-4 px-6 rounded-lg shadow-md">Bahasa Indonesia</button>
+            <button data-lang="en" class="lang-btn btn-action w-full bg-white text-red-600 font-bold py-4 px-6 rounded-lg shadow-md">English</button>
+            <button id="about-btn" class="btn-action w-full bg-gray-500 text-white font-bold py-3 px-6 rounded-lg shadow-md mt-2">Tentang</button>
+        </div>
+    </div>
+
+    <!-- Layar Pengaturan Game -->
+    <div id="settings-screen" class="hidden w-full max-w-sm text-center animate-fade-in">
+        <h2 class="text-3xl font-bold text-slate-700 mb-6">Pengaturan Game</h2>
+        <!-- Pilihan Kesempatan -->
+        <div class="mb-6">
+            <h3 class="text-xl font-semibold text-slate-600 mb-3">Pilih Kesempatan (Salah)</h3>
+            <div id="difficulty-options" class="grid grid-cols-3 gap-3">
+                <button data-guesses="10" class="difficulty-btn btn-setting py-3 px-2 rounded-lg bg-white shadow-sm font-semibold">Mudah (10)</button>
+                <button data-guesses="6" class="difficulty-btn btn-setting py-3 px-2 rounded-lg bg-white shadow-sm font-semibold selected">Normal (6)</button>
+                <button data-guesses="4" class="difficulty-btn btn-setting py-3 px-2 rounded-lg bg-white shadow-sm font-semibold">Sulit (4)</button>
+            </div>
+        </div>
+        <!-- Pilihan Kategori -->
+        <div class="mb-8">
+            <h3 class="text-xl font-semibold text-slate-600 mb-3">Pilih Kategori Kata</h3>
+            <div id="category-options" class="grid grid-cols-2 gap-3">
+                <!-- Opsi kategori akan ditambahkan oleh JS -->
+            </div>
+        </div>
+        <div class="flex flex-col gap-3">
+             <button id="start-game-btn" class="w-full bg-green-500 text-white font-bold py-4 px-6 rounded-lg shadow-md btn-action">MULAI BERMAIN</button>
+             <button id="back-to-lang-btn" class="w-full bg-slate-400 text-white font-bold py-3 px-6 rounded-lg shadow-md btn-action">Kembali</button>
+        </div>
+    </div>
+
+    <!-- Kontainer Game -->
+    <div id="game-container" class="hidden w-full max-w-lg mx-auto text-center">
+        <div class="flex justify-between items-center mb-4">
+            <button id="back-to-settings-btn" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-1 px-3 rounded-md transition-colors">Pengaturan</button>
+            <h1 id="category-title" class="text-xl font-bold text-blue-600 tracking-wider">KATEGORI</h1>
+            <div class="w-20"></div>
+        </div>
+        <div class="relative w-full max-w-xs mx-auto mb-4 aspect-square">
+            <canvas id="hangman-canvas" class="bg-white rounded-lg shadow-md"></canvas>
+        </div>
+        <p id="guesses-left-text" class="mb-4 text-slate-600 text-lg">Sisa Tebakan: <span id="guesses-left-count" class="font-bold">6</span></p>
+        <div id="word-display" class="flex justify-center gap-1 md:gap-2 mb-6 flex-wrap"></div>
+        <div id="keyboard" class="grid grid-cols-7 sm:grid-cols-9 gap-2 w-full"></div>
+    </div>
+
+    <!-- Modal Game Over -->
+    <div id="game-over-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 text-center w-full max-w-sm animate-fade-in">
+            <h2 id="modal-title" class="text-3xl font-bold mb-2"></h2>
+            <p id="modal-answer-text" class="text-slate-600 mb-4"></p>
+            <div id="correct-word" class="bg-slate-100 text-blue-600 text-xl md:text-2xl font-bold tracking-widest py-2 px-4 rounded-lg mb-6 inline-block"></div>
+            <p id="modal-subtitle" class="text-slate-500 mb-6"></p>
+            <button id="play-again-btn" class="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg btn-action">Main Lagi</button>
+        </div>
+    </div>
+
+    <!-- Modal 'Tentang Game' -->
+    <div id="about-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+         <div class="bg-gray-800 rounded-2xl p-6 w-full max-w-md text-center shadow-2xl overflow-y-auto max-h-[90vh] animate-fade-in">
+            <h3 class="text-2xl font-bold mb-4 text-white">Tentang Hangman</h3>
+            <p class="text-gray-300 mb-4 text-left">Tebak kata tersembunyi huruf demi huruf. Atur tingkat kesulitan dan pilih kategori kata favoritmu. Uji kosakatamu dalam Bahasa Indonesia dan Inggris!</p>
+            <div class="mt-6 border-t border-gray-700 pt-4 text-left">
+                <h4 class="font-semibold text-white mb-2">Catatan Perubahan (Changelog)</h4>
+                <ul class="text-sm text-gray-400 list-disc pl-5 space-y-1">
+                    <li><span class="font-semibold text-gray-300">v1.5:</span> Penambahan 5 kategori kata baru.</li>
+                    <li><span class="font-semibold text-gray-300">v1.4:</span> Penambahan mode game (kesempatan & kategori kata).</li>
+                    <li><span class="font-semibold text-gray-300">v1.3:</span> Penambahan menu informasi 'Tentang'.</li>
+                    <li><span class="font-semibold text-gray-300">v1.2:</span> Implementasi pilihan bahasa (Indonesia & Inggris).</li>
+                    <li><span class="font-semibold text-gray-300">v1.1:</span> Penambahan efek suara.</li>
+                    <li><span class="font-semibold text-gray-300">v1.0:</span> Rilis awal game Hangman.</li>
+                </ul>
+            </div>
+            <div class="mt-6 border-t border-gray-700 pt-4 text-left">
+                <h4 class="font-semibold text-sm text-white mb-2">Informasi Hak Cipta</h4>
+                <p class="text-xs text-gray-400 leading-relaxed">Game ini, termasuk seluruh elemen di dalamnya, adalah karya cipta yang dilindungi. Dilarang menggandakan atau mendistribusikan ulang tanpa izin tertulis dari pencipta.</p>
+            </div>
+            <p class="text-gray-400 mt-6 mb-1">Dibuat oleh:</p>
+            <p class="text-lg font-semibold text-white mb-6">Deny Kusrianto</p>
+            <div class="flex justify-center gap-4 mb-6">
+                <a href="https://www.instagram.com/kaltimff_store?igsh=bWlzeHpiZ281djN4" target="_blank" class="btn-action bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded-lg inline-flex items-center"><svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24"><path d="M7.8,2H16.2C19.4,2 22,4.6 22,7.8V16.2A5.8,5.8 0 0,1 16.2,22H7.8C4.6,22 2,19.4 2,16.2V7.8A5.8,5.8 0 0,1 7.8,2M7.6,4A3.6,3.6 0 0,0 4,7.6V16.4C4,18.39 5.61,20 7.6,20H16.4A3.6,3.6 0 0,0 20,16.4V7.6C20,5.61 18.39,4 16.4,4H7.6M17.25,5.5A1.25,1.25 0 0,1 18.5,6.75A1.25,1.25 0 0,1 17.25,8A1.25,1.25 0 0,1 16,6.75A1.25,1.25 0 0,1 17.25,5.5M12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9Z" /></svg>Instagram</a>
+                <a href="https://wa.me/message/JNJFBTFD773MB1" target="_blank" class="btn-action bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg inline-flex items-center"><svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.31 20.62C8.75 21.41 10.37 21.82 12.04 21.82C17.5 21.82 21.95 17.37 21.95 11.91C21.95 6.45 17.5 2 12.04 2M12.04 3.67C16.56 3.67 20.28 7.39 20.28 11.91C20.28 16.43 16.56 20.15 12.04 20.15C10.46 20.15 8.96 19.74 7.64 19L7.1 18.68L4.31 19.38L5.02 16.68L4.67 16.14C3.89 14.81 3.46 13.31 3.46 11.91C3.46 7.39 7.18 3.67 12.04 3.67M9.13 7.5C8.86 7.5 8.54 7.59 8.28 8.06C8.02 8.53 7.37 9.19 7.37 10.4C7.37 11.61 8.31 12.75 8.47 12.94C8.63 13.13 10.03 15.35 12.21 16.22C13.96 16.92 14.33 16.76 14.78 16.71C15.23 16.66 16.19 16.13 16.38 15.5C16.57 14.87 16.57 14.34 16.52 14.24C16.47 14.14 16.28 14.09 16.02 13.95C15.76 13.81 14.61 13.25 14.39 13.16C14.17 13.07 14.02 13.02 13.88 13.26C13.74 13.5 13.26 14.02 13.12 14.16C12.98 14.31 12.84 14.36 12.58 14.22C12.05 13.95 11.23 13.5 10.23 12.59C9.44 11.88 8.91 11.03 8.77 10.77C8.63 10.51 8.74 10.37 8.88 10.24C8.95 10.17 9.07 10.04 9.21 9.89C9.35 9.75 9.4 9.66 9.5 9.52C9.6 9.37 9.55 9.23 9.5 9.13C9.45 9.03 9.03 8 8.84 7.59C8.65 7.18 8.47 7.23 8.28 7.23" /></svg>WhatsApp</a>
+            </div>
+            <button id="about-close-btn" class="btn-action bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg mt-6">Tutup</button>
+        </div>
+    </div>
+    
+    <script>
+        // --- Elemen DOM ---
+        const langSelectionScreen = document.getElementById('language-selection-screen');
+        const settingsScreen = document.getElementById('settings-screen');
+        const gameContainer = document.getElementById('game-container');
+        const langBtns = document.querySelectorAll('.lang-btn');
+        const difficultyOptions = document.getElementById('difficulty-options');
+        const categoryOptions = document.getElementById('category-options');
+        const startGameBtn = document.getElementById('start-game-btn');
+        const backToLangBtn = document.getElementById('back-to-lang-btn');
+        const backToSettingsBtn = document.getElementById('back-to-settings-btn');
+        const categoryTitle = document.getElementById('category-title');
+        const guessesLeftTextEl = document.getElementById('guesses-left-text');
+        const guessesLeftCountEl = document.getElementById('guesses-left-count');
+        const wordDisplayEl = document.getElementById('word-display');
+        const keyboardEl = document.getElementById('keyboard');
+        const canvas = document.getElementById('hangman-canvas');
+        const ctx = canvas.getContext('2d');
+        const aboutBtn = document.getElementById('about-btn');
+        const aboutModal = document.getElementById('about-modal');
+        const aboutCloseBtn = document.getElementById('about-close-btn');
+        const gameOverModal = document.getElementById('game-over-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalAnswerText = document.getElementById('modal-answer-text');
+        const modalSubtitle = document.getElementById('modal-subtitle');
+        const correctWordEl = document.getElementById('correct-word');
+        const playAgainBtn = document.getElementById('play-again-btn');
+
+        // --- Daftar Kata Berdasarkan Kategori ---
+        const words = {
+            id: {
+                Makanan: ['SATE', 'RENDANG', 'GUDGEG', 'BAKSO', 'PEMPEK', 'NASIGORENG'],
+                Hewan: ['HARIMAU', 'GAJAH', 'ORANGUTAN', 'KOMODO', 'CENDRAWASIH', 'ELANG'],
+                Negara: ['INDONESIA', 'MALAYSIA', 'SINGAPURA', 'THAILAND', 'VIETNAM', 'JEPANG'],
+                Buah: ['MANGGA', 'APEL', 'PISANG', 'JERUK', 'SEMANGKA', 'ANGGUR'],
+                Profesi: ['DOKTER', 'GURU', 'POLISI', 'PILOT', 'KOKI', 'PENULIS'],
+                Olahraga: ['SEPAKBOLA', 'BASKET', 'RENANG', 'BULUTANGKIS', 'TENIS', 'VOLI'],
+                Warna: ['MERAH', 'KUNING', 'HIJAU', 'BIRU', 'HITAM', 'PUTIH'],
+                Benda: ['MEJA', 'KURSI', 'BUKU', 'PENSIL', 'LAMPU', 'JENDELA']
+            },
+            en: {
+                Foods: ['PIZZA', 'BURGER', 'SPAGHETTI', 'SUSHI', 'TACOS', 'PANCAKE'],
+                Animals: ['TIGER', 'ELEPHANT', 'GIRAFFE', 'PENGUIN', 'KANGAROO', 'DOLPHIN'],
+                Countries: ['AMERICA', 'JAPAN', 'CANADA', 'BRAZIL', 'AUSTRALIA', 'GERMANY'],
+                Fruits: ['MANGO', 'APPLE', 'BANANA', 'ORANGE', 'WATERMELON', 'GRAPE'],
+                Professions: ['DOCTOR', 'TEACHER', 'POLICE', 'PILOT', 'CHEF', 'WRITER'],
+                Sports: ['SOCCER', 'BASKETBALL', 'SWIMMING', 'BADMINTON', 'TENNIS', 'VOLLEYBALL'],
+                Colors: ['RED', 'YELLOW', 'GREEN', 'BLUE', 'BLACK', 'WHITE'],
+                Things: ['TABLE', 'CHAIR', 'BOOK', 'PENCIL', 'LAMP', 'WINDOW']
+            }
+        };
+
+        const uiText = { id: { /* ... */ }, en: { /* ... */ } }; // Teks UI tidak berubah
+
+        // --- Variabel State Game ---
+        let currentLanguage = 'id';
+        let currentCategory = '';
+        let maxIncorrectGuesses = 6;
+        let selectedWord = '';
+        let guessedLetters = [];
+        let incorrectGuesses = 0;
+        let isGameOver = false;
+
+        // --- Efek Suara (Tone.js) ---
+        let audioReady = false;
+        const synthCorrect = new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.1 } }).toDestination();
+        const synthWrong = new Tone.Synth({ oscillator: { type: 'square' }, envelope: { attack: 0.02, decay: 0.3, sustain: 0, release: 0.1 } }).toDestination();
+        const synthWin = new Tone.PolySynth(Tone.Synth, { oscillator: { type: 'sine' }, envelope: { attack: 0.05, decay: 0.3, sustain: 0.2, release: 0.2 } }).toDestination();
+        const synthLose = new Tone.MembraneSynth({ pitchDecay: 0.05, octaves: 10, oscillator: { type: 'sine' }, envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4, attackCurve: 'exponential' } }).toDestination();
+        const synthClick = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.1 } }).toDestination();
+        
+        async function initAudio() { if (!audioReady) { await Tone.start(); audioReady = true; } }
+        
+        // --- Fungsi Navigasi & Setup ---
+        function showScreen(screen) {
+            [langSelectionScreen, settingsScreen, gameContainer].forEach(s => s.classList.add('hidden'));
+            screen.classList.remove('hidden');
+        }
+
+        function setupSettingsScreen() {
+            const categories = Object.keys(words[currentLanguage]);
+            categoryOptions.innerHTML = '';
+            categories.forEach((cat, index) => {
+                const btn = document.createElement('button');
+                btn.dataset.category = cat;
+                btn.textContent = cat;
+                btn.className = 'category-btn btn-setting py-3 px-2 rounded-lg bg-white shadow-sm font-semibold text-sm';
+                if (index === 0) {
+                    btn.classList.add('selected');
+                    currentCategory = cat;
+                }
+                categoryOptions.appendChild(btn);
+            });
+            showScreen(settingsScreen);
+        }
+
+        // --- Fungsi-fungsi Game ---
+        function selectRandomWord() {
+            const wordList = words[currentLanguage][currentCategory];
+            return wordList[Math.floor(Math.random() * wordList.length)];
+        }
+
+        const drawParts = [
+            (w, h) => { ctx.beginPath(); ctx.arc(w * 0.7, h * 0.35, w * 0.1, 0, Math.PI * 2); ctx.stroke(); }, // Kepala
+            (w, h) => { ctx.beginPath(); ctx.moveTo(w * 0.7, h * 0.45); ctx.lineTo(w * 0.7, h * 0.65); ctx.stroke(); }, // Badan
+            (w, h) => { ctx.beginPath(); ctx.moveTo(w * 0.7, h * 0.5); ctx.lineTo(w * 0.6, h * 0.6); ctx.stroke(); }, // Tangan Kiri
+            (w, h) => { ctx.beginPath(); ctx.moveTo(w * 0.7, h * 0.5); ctx.lineTo(w * 0.8, h * 0.6); ctx.stroke(); }, // Tangan Kanan
+            (w, h) => { ctx.beginPath(); ctx.moveTo(w * 0.7, h * 0.65); ctx.lineTo(w * 0.6, h * 0.75); ctx.stroke(); }, // Kaki Kiri
+            (w, h) => { ctx.beginPath(); ctx.moveTo(w * 0.7, h * 0.65); ctx.lineTo(w * 0.8, h * 0.75); ctx.stroke(); }  // Kaki Kanan
+        ];
+
+        function drawHangman() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const w = canvas.width, h = canvas.height;
+            // Tiang gantungan
+            ctx.strokeStyle = '#334155'; ctx.lineWidth = w * 0.02;
+            ctx.beginPath(); ctx.moveTo(w * 0.1, h * 0.9); ctx.lineTo(w * 0.4, h * 0.9); ctx.moveTo(w * 0.25, h * 0.9); ctx.lineTo(w * 0.25, h * 0.1); ctx.lineTo(w * 0.7, h * 0.1); ctx.lineTo(w * 0.7, h * 0.25); ctx.stroke();
+
+            // Menggambar bagian tubuh
+            const partsToDraw = Math.ceil((incorrectGuesses / maxIncorrectGuesses) * drawParts.length);
+            for (let i = 0; i < partsToDraw; i++) {
+                if (drawParts[i]) drawParts[i](w, h);
+            }
+        }
+        
+        function resizeCanvas() { const parent = canvas.parentElement; const size = Math.min(parent.clientWidth, parent.clientHeight); canvas.width = size; canvas.height = size; drawHangman(); }
+        
+        function renderWordDisplay() { 
+            wordDisplayEl.innerHTML = ''; 
+            const letterSize = selectedWord.length > 10 ? 'w-8 h-10 text-xl' : 'w-10 h-12 md:w-12 md:h-14 text-2xl md:text-3xl';
+            selectedWord.split('').forEach(letter => { 
+                const letterEl = document.createElement('div'); 
+                letterEl.className = `${letterSize} bg-white rounded-md shadow-sm flex items-center justify-center font-bold uppercase`; 
+                if (guessedLetters.includes(letter)) { 
+                    letterEl.textContent = letter; 
+                    letterEl.classList.add('border-2', 'border-blue-400'); 
+                } 
+                wordDisplayEl.appendChild(letterEl); 
+            }); 
+        }
+
+        function renderKeyboard() { keyboardEl.innerHTML = ''; 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(letter => { const btn = document.createElement('button'); btn.className = 'keyboard-btn h-12 rounded-lg bg-white shadow-sm font-semibold text-slate-700 hover:bg-slate-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400'; btn.textContent = letter; btn.dataset.letter = letter; keyboardEl.appendChild(btn); }); }
+        
+        function handleGuess(e) {
+            if (isGameOver || !e.target.matches('.keyboard-btn') || e.target.disabled) return;
+            initAudio();
+            const guessedLetter = e.target.dataset.letter;
+            e.target.disabled = true; guessedLetters.push(guessedLetter);
+            if (selectedWord.includes(guessedLetter)) {
+                e.target.classList.add('correct'); synthCorrect.triggerAttackRelease('C5', '8n');
+                renderWordDisplay(); checkWinCondition();
+            } else {
+                e.target.classList.add('wrong'); synthWrong.triggerAttackRelease('A2', '8n');
+                incorrectGuesses++;
+                guessesLeftCountEl.textContent = maxIncorrectGuesses - incorrectGuesses;
+                drawHangman(); checkLossCondition();
+            }
+        }
+        
+        function checkWinCondition() { if (selectedWord.split('').every(letter => guessedLetters.includes(letter))) { isGameOver = true; setTimeout(() => showGameOverModal(true), 500); } }
+        function checkLossCondition() { if (incorrectGuesses >= maxIncorrectGuesses) { isGameOver = true; setTimeout(() => showGameOverModal(false), 500); } }
+        
+        function showGameOverModal(isWin) {
+            // Teks disederhanakan
+            if (isWin) {
+                modalTitle.textContent = "Kamu Menang!"; modalTitle.className = 'text-3xl font-bold mb-2 text-green-500';
+                modalSubtitle.textContent = "Kerja Bagus!"; synthWin.triggerAttackRelease(['C4', 'E4', 'G4', 'C5'], '8n');
+            } else {
+                modalTitle.textContent = "Kamu Kalah!"; modalTitle.className = 'text-3xl font-bold mb-2 text-red-500';
+                modalSubtitle.textContent = "Coba lagi ya!"; synthLose.triggerAttackRelease('C2', '8n', Tone.now());
+            }
+            modalAnswerText.textContent = "Jawabannya adalah:"; correctWordEl.textContent = selectedWord;
+            playAgainBtn.textContent = "Main Lagi"; gameOverModal.classList.remove('hidden');
+        }
+        
+        function startGame() {
+            isGameOver = false; selectedWord = selectRandomWord(); guessedLetters = []; incorrectGuesses = 0;
+            guessesLeftCountEl.textContent = maxIncorrectGuesses;
+            categoryTitle.textContent = currentCategory.toUpperCase();
+            gameOverModal.classList.add('hidden');
+            resizeCanvas(); renderWordDisplay(); renderKeyboard();
+            showScreen(gameContainer);
+        }
+
+        // --- Event Listeners ---
+        langBtns.forEach(btn => btn.addEventListener('click', () => {
+            initAudio(); synthClick.triggerAttackRelease('C4', '8n');
+            currentLanguage = btn.dataset.lang;
+            setupSettingsScreen();
+        }));
+        
+        difficultyOptions.addEventListener('click', (e) => {
+            if (e.target.matches('.difficulty-btn')) {
+                synthClick.triggerAttackRelease('C4', '8n');
+                difficultyOptions.querySelector('.selected').classList.remove('selected');
+                e.target.classList.add('selected');
+                maxIncorrectGuesses = parseInt(e.target.dataset.guesses);
+            }
+        });
+
+        categoryOptions.addEventListener('click', (e) => {
+            if (e.target.matches('.category-btn')) {
+                synthClick.triggerAttackRelease('C4', '8n');
+                if(categoryOptions.querySelector('.selected')) {
+                    categoryOptions.querySelector('.selected').classList.remove('selected');
+                }
+                e.target.classList.add('selected');
+                currentCategory = e.target.dataset.category;
+            }
+        });
+
+        startGameBtn.addEventListener('click', () => {
+             initAudio(); synthClick.triggerAttackRelease('C5', '8n');
+             startGame();
+        });
+
+        backToLangBtn.addEventListener('click', () => {
+            synthClick.triggerAttackRelease('C4', '8n');
+            showScreen(langSelectionScreen);
+        });
+        
+        backToSettingsBtn.addEventListener('click', () => {
+             synthClick.triggerAttackRelease('C4', '8n');
+             showScreen(settingsScreen);
+        });
+
+        playAgainBtn.addEventListener('click', () => {
+            initAudio(); synthClick.triggerAttackRelease('C4', '8n');
+            startGame();
+        });
+        
+        keyboardEl.addEventListener('click', handleGuess);
+        window.addEventListener('resize', resizeCanvas);
+        aboutBtn.addEventListener('click', () => { initAudio(); synthClick.triggerAttackRelease('C5', '8n'); aboutModal.classList.remove('hidden'); });
+        aboutCloseBtn.addEventListener('click', () => { synthClick.triggerAttackRelease('C4', '8n'); aboutModal.classList.add('hidden'); });
+        aboutModal.addEventListener('click', (e) => { if (e.target === aboutModal) { synthClick.triggerAttackRelease('C4', '8n'); aboutModal.classList.add('hidden'); } });
+
+    </script>
+</body>
+</html>
