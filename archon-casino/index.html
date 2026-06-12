@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Archon Casino V13 - Mines Fix</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Playfair+Display:wght@700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        gold: { 400: '#FBBF24', 500: '#F59E0B', 600: '#D97706' },
+                        zeus: { 400: '#a855f7', 600: '#7e22ce', 900: '#3b0764' },
+                        trade: { up: '#10B981', down: '#EF4444', chart: '#0f172a' },
+                        mines: { tile: '#334155', safe: '#0f766e', bomb: '#be123c' }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    animation: {
+                        'bounce-in': 'bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                        'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'reel-spin': 'reelSpin 0.2s linear infinite',
+                        'fade-in': 'fadeIn 0.3s ease-out forwards',
+                        'slide-down': 'slideDown 0.5s ease-out forwards',
+                        'coin-fall': 'coinFall 1s ease-in forwards',
+                        'pop-up': 'popUp 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55) forwards',
+                        'shake': 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both',
+                    },
+                    keyframes: {
+                        bounceIn: { '0%': { transform: 'scale(0.3)', opacity: 0 }, '100%': { transform: 'scale(1)', opacity: 1 } },
+                        reelSpin: { '0%': { transform: 'translateY(-10px)' }, '100%': { transform: 'translateY(10px)' } },
+                        fadeIn: { from: { opacity: 0, transform: 'scale(0.95)' }, to: { opacity: 1, transform: 'scale(1)' } },
+                        slideDown: { from: { transform: 'translateY(-100%)', opacity: 0 }, to: { transform: 'translateY(0)', opacity: 1 } },
+                        coinFall: { '0%': { transform: 'translateY(-100vh) rotate(0deg)', opacity: 1 }, '100%': { transform: 'translateY(100vh) rotate(360deg)', opacity: 0 } },
+                        popUp: { '0%': { transform: 'scale(0)' }, '100%': { transform: 'scale(1)' } },
+                        shake: { '10%, 90%': { transform: 'translate3d(-1px, 0, 0)' }, '20%, 80%': { transform: 'translate3d(2px, 0, 0)' }, '30%, 50%, 70%': { transform: 'translate3d(-4px, 0, 0)' }, '40%, 60%': { transform: 'translate3d(4px, 0, 0)' } }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #0f172a; /* Default BG */
+            background-image: radial-gradient(#1e293b 1px, transparent 1px);
+            background-size: 20px 20px;
+            color: #e2e8f0;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            transition: background 0.5s;
+        }
+        
+        /* Dynamic Background Classes */
+        body.bg-theme-luxury { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); }
+        body.bg-theme-cyber { background: #000000; background-image: linear-gradient(0deg, transparent 24%, rgba(34, 197, 94, .3) 25%, rgba(34, 197, 94, .3) 26%, transparent 27%, transparent 74%, rgba(34, 197, 94, .3) 75%, rgba(34, 197, 94, .3) 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, rgba(34, 197, 94, .3) 25%, rgba(34, 197, 94, .3) 26%, transparent 27%, transparent 74%, rgba(34, 197, 94, .3) 75%, rgba(34, 197, 94, .3) 76%, transparent 77%, transparent); background-size: 50px 50px; }
+        body.bg-theme-royal { background: radial-gradient(circle at center, #7f1d1d 0%, #450a0a 100%); }
+
+        /* Card Designs */
+        .card { width: 46px; height: 64px; background-color: white; border-radius: 6px; display: inline-flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: 0 3px 6px rgba(0,0,0,0.4); font-weight: bold; position: relative; border: 1px solid #cbd5e1; transition: transform 0.3s ease-out; }
+        .card.red { color: #dc2626; }
+        .card.black { color: #0f172a; }
+        
+        /* Card Back Skins */
+        .card-back { background: repeating-linear-gradient(45deg, #1e3a8a, #1e3a8a 5px, #172554 5px, #172554 10px); border: 2px solid white; }
+        .card-skin-gold .card-back { background: radial-gradient(circle, #fcd34d 0%, #b45309 100%); border: 2px solid #fffbeb; }
+        .card-skin-cyber .card-back { background: black; border: 2px solid #22c55e; box-shadow: 0 0 5px #22c55e; position: relative; }
+        .card-skin-cyber .card-back::after { content:''; position: absolute; inset: 2px; background: repeating-linear-gradient(0deg, transparent, transparent 2px, #22c55e 2px, #22c55e 4px); opacity: 0.5; }
+
+        /* Game Elements */
+        .mahjong-tile { background-color: #f1f1f1; color: #1e3a8a; border: 3px solid #d1d5db; border-radius: 8px; font-weight: bold; font-size: 1.75rem; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: all 0.3s; }
+        .mahjong-tile-wild { background-color: #16a34a; color: white; border-color: #f1c40f; }
+        .mahjong-tile-gold { background: linear-gradient(145deg, #fde047, #f59e0b); color: #7f1d1d; border-color: #facc15; box-shadow: 0 0 15px #facc15; }
+        .slot-reel.spinning .slot-cell { filter: blur(2px); animation: reelSpin 0.1s infinite; }
+        .payline-highlight { border: 2px solid #F59E0B !important; background-color: rgba(245, 158, 11, 0.2); }
+        
+        /* Mines Elements */
+        .mine-tile { background: #334155; border-bottom: 4px solid #1e293b; border-radius: 8px; cursor: pointer; transition: all 0.1s; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; position: relative; overflow: hidden; height: 50px; }
+        .mine-tile:active:not(.revealed) { transform: translateY(2px); border-bottom-width: 1px; }
+        .mine-tile.revealed-safe { background: #0f766e; border-bottom: 0; color: #2dd4bf; box-shadow: inset 0 0 10px rgba(0,0,0,0.3); }
+        .mine-tile.revealed-bomb { background: #be123c; border-bottom: 0; color: white; box-shadow: inset 0 0 10px rgba(0,0,0,0.3); }
+        
+        /* UI Helpers */
+        .btn-clickable { cursor: pointer; position: relative; z-index: 50; transition: transform 0.1s; user-select: none; }
+        .btn-clickable:active { transform: scale(0.95); }
+        .btn-action { transition: all 0.2s ease-in-out; }
+        .btn-action:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .xp-bar-container { height: 4px; background: #334155; border-radius: 2px; overflow: hidden; width: 100px; margin-top: 2px; }
+        .xp-bar-fill { height: 100%; background: linear-gradient(90deg, #FBBF24, #D97706); transition: width 0.5s ease-out; }
+        canvas { image-rendering: pixelated; }
+
+        /* Big Win Particles */
+        .coin-particle { position: fixed; width: 30px; height: 30px; background: radial-gradient(#fbbf24, #d97706); border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 10px rgba(251, 191, 36, 0.5); z-index: 100; pointer-events: none; }
+        .coin-particle::after { content:'$'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#92400e; font-weight:bold; font-family:monospace; }
+    </style>
+</head>
+<body id="main-body" class="min-h-screen flex flex-col items-center justify-center select-none">
+
+    <!-- NOTIFICATION TOAST (For Achievements) -->
+    <div id="toast-container" class="fixed top-20 left-1/2 -translate-x-1/2 z-[60] flex flex-col gap-2 pointer-events-none w-full max-w-sm px-4"></div>
+
+    <!-- HUD -->
+    <div id="hud" class="fixed top-0 left-0 right-0 p-3 flex justify-between items-start z-40 bg-slate-900/95 border-b border-slate-700 hidden backdrop-blur">
+        <button onclick="window.goToLobby()" class="text-slate-300 hover:text-white flex items-center gap-2 btn-clickable py-1"><i class="fas fa-arrow-left"></i> Lobby</button>
+        <div class="flex flex-col items-end gap-1">
+            <div class="flex items-center gap-2 bg-slate-800 px-4 py-1 rounded-full border border-gold-500/50 shadow-lg">
+                <i class="fas fa-coins text-gold-400"></i>
+                <span id="user-credits" class="font-mono font-bold text-white tracking-wider">1000</span>
+            </div>
+            <div class="flex flex-col items-end mr-1">
+                <div class="flex items-center gap-1 text-[10px] font-bold text-gold-300 uppercase tracking-widest">
+                    <i class="fas fa-crown text-[8px]"></i> <span id="user-rank">BRONZE</span> <span id="user-lvl" class="text-white bg-slate-700 px-1 rounded">Lvl 1</span>
+                </div>
+                <div class="xp-bar-container"><div id="xp-bar" class="xp-bar-fill" style="width: 0%"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN MENU -->
+    <div id="screen-menu" class="flex flex-col items-center w-full max-w-md p-6 z-10 space-y-10 relative animate-bounce-in">
+        <div class="text-center mt-10">
+            <h1 class="text-6xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-b from-gold-300 to-gold-600 drop-shadow-lg">ARCHON</h1>
+            <h2 class="text-3xl text-white font-light tracking-[0.5em] mt-2">CASINO</h2>
+            <div class="h-0.5 w-20 bg-gold-500 mx-auto my-6 rounded-full opacity-80"></div>
+        </div>
+        <div class="w-full space-y-4 px-6">
+            <button onclick="window.showScreen('screen-selection')" class="btn-clickable w-full py-5 rounded-xl text-xl font-bold text-white flex items-center justify-center gap-3 bg-gradient-to-r from-gold-600 to-gold-500 shadow-[0_0_20px_rgba(245,158,11,0.3)] border-b-4 border-gold-800 active:border-b-0 active:translate-y-1"><i class="fas fa-play"></i> PLAY NOW</button>
+            
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="window.showScreen('screen-leaderboard')" class="bg-slate-800/80 border border-slate-600 py-4 rounded-xl text-sm text-gold-300 hover:text-white hover:bg-slate-700 transition btn-clickable"><i class="fas fa-trophy mb-1 block text-lg text-gold-500"></i> Papan Peringkat</button>
+                <button onclick="window.showScreen('screen-missions')" class="bg-slate-800/80 border border-slate-600 py-4 rounded-xl text-sm text-blue-300 hover:text-white hover:bg-slate-700 transition btn-clickable"><i class="fas fa-medal mb-1 block text-lg text-blue-500"></i> Misi & Prestasi</button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="window.showScreen('screen-shop')" class="bg-indigo-900/80 border border-indigo-500 py-3 rounded-xl text-sm text-indigo-100 hover:text-white hover:bg-indigo-800 transition btn-clickable"><i class="fas fa-store mr-1"></i> Toko</button>
+                <button onclick="window.showModal('about-modal')" class="bg-slate-800/50 border border-slate-600 py-3 rounded-xl text-sm text-slate-300 hover:text-white btn-clickable"><i class="fas fa-info-circle mr-1"></i> Tentang</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SHOP SCREEN -->
+    <div id="screen-shop" class="hidden w-full max-w-md p-4 z-10 mt-16 animate-bounce-in pb-20">
+        <h2 class="text-2xl font-serif text-center text-gold-400 mb-6 tracking-wide">TOKO & INVENTARIS</h2>
+        <div class="flex gap-2 mb-4 bg-slate-800 p-1 rounded-lg">
+            <button onclick="window.switchShopTab('buy')" id="tab-buy" class="flex-1 py-2 rounded font-bold text-xs bg-gold-600 text-white transition">BELI ITEM</button>
+            <button onclick="window.switchShopTab('inv')" id="tab-inv" class="flex-1 py-2 rounded font-bold text-xs text-slate-400 hover:text-white transition">INVENTARIS</button>
+        </div>
+        <div id="shop-buy-container" class="grid grid-cols-2 gap-3"></div>
+        <div id="shop-inv-container" class="hidden grid grid-cols-2 gap-3"></div>
+    </div>
+
+    <!-- LEADERBOARD SCREEN -->
+    <div id="screen-leaderboard" class="hidden w-full max-w-md p-4 z-10 mt-16 animate-bounce-in pb-20">
+        <h2 class="text-2xl font-serif text-center text-gold-400 mb-6 tracking-wide">TOP PEMAIN GLOBAL</h2>
+        <div class="bg-slate-800/90 rounded-2xl border border-slate-700 overflow-hidden shadow-2xl">
+            <div class="p-4 bg-slate-900/50 border-b border-slate-700 flex justify-between text-xs font-bold text-slate-400">
+                <span>RANK / USER</span>
+                <span>CREDITS</span>
+            </div>
+            <div id="leaderboard-list" class="flex flex-col divide-y divide-slate-700/50">
+                <!-- Generated by JS -->
+            </div>
+        </div>
+        <p class="text-center text-[10px] text-slate-500 mt-4">Peringkat diperbarui secara real-time.</p>
+    </div>
+
+    <!-- MISSIONS SCREEN -->
+    <div id="screen-missions" class="hidden w-full max-w-md p-4 z-10 mt-16 animate-bounce-in pb-20">
+        <h2 class="text-2xl font-serif text-center text-blue-400 mb-6 tracking-wide">MISI & PRESTASI</h2>
+        <div id="missions-list" class="space-y-3">
+            <!-- Generated by JS -->
+        </div>
+    </div>
+
+    <!-- GAME SELECTION -->
+    <div id="screen-selection" class="hidden w-full max-w-md p-4 z-10 mt-16 animate-bounce-in pb-20">
+        <h2 class="text-2xl font-serif text-center text-gold-400 mb-8 tracking-wide">PILIH PERMAINAN</h2>
+        <div class="grid gap-4">
+            <!-- Archon Mines (NEW) -->
+            <div onclick="window.startGame('mines')" class="bg-gradient-to-r from-slate-900 to-cyan-900 p-5 rounded-2xl border border-cyan-500 hover:border-gold-300 cursor-pointer flex items-center gap-4 transition transform hover:-translate-y-1 btn-clickable shadow-lg relative overflow-hidden">
+                <div class="absolute -right-6 -top-6 bg-blue-500 w-20 h-20 rotate-45 flex items-end justify-center pb-1 z-10 shadow-lg"><span class="text-white text-[10px] font-bold">NEW</span></div>
+                <div class="bg-cyan-500/20 p-3 rounded-xl"><i class="fas fa-bomb text-cyan-400 text-2xl"></i></div>
+                <div><h3 class="text-white font-bold text-lg">Archon Mines</h3><p class="text-xs text-cyan-300">Hindari Bom, Cari Berlian</p></div>
+            </div>
+            <!-- Archon Trade (Crash) -->
+            <div onclick="window.startGame('crash')" class="bg-gradient-to-r from-slate-900 to-emerald-900 p-5 rounded-2xl border border-emerald-500 hover:border-gold-300 cursor-pointer flex items-center gap-4 transition transform hover:-translate-y-1 btn-clickable shadow-lg relative overflow-hidden">
+                <div class="bg-emerald-500/20 p-3 rounded-xl"><i class="fas fa-chart-line text-emerald-400 text-2xl"></i></div>
+                <div><h3 class="text-white font-bold text-lg">Archon Trade</h3><p class="text-xs text-emerald-300">Crypto Crash & Multiplier</p></div>
+            </div>
+            <!-- Mahjonghan -->
+            <div onclick="window.startGame('mahjong')" class="bg-gradient-to-r from-red-800 to-slate-900 p-5 rounded-2xl border border-red-500 hover:border-gold-300 cursor-pointer flex items-center gap-4 transition transform hover:-translate-y-1 btn-clickable shadow-lg">
+                <div class="bg-red-500/20 p-3 rounded-xl"><i class="fas fa-dragon text-gold-400 text-2xl"></i></div>
+                <div><h3 class="text-white font-bold text-lg">Mahjonghan</h3><p class="text-xs text-red-300">Gold-to-Wild & Tumble</p></div>
+            </div>
+            <!-- Dimka Petir -->
+            <div onclick="window.startGame('dimka')" class="bg-gradient-to-r from-purple-900 to-slate-900 p-5 rounded-2xl border border-purple-500 hover:border-purple-300 cursor-pointer flex items-center gap-4 transition transform hover:-translate-y-1 btn-clickable shadow-lg">
+                <div class="bg-purple-500/20 p-3 rounded-xl"><i class="fas fa-bolt text-gold-400 text-2xl"></i></div>
+                <div><h3 class="text-white font-bold text-lg">DimKa Petir</h3><p class="text-xs text-purple-300">x500 Multiplier</p></div>
+            </div>
+            <!-- Classic Games Row -->
+            <div class="grid grid-cols-3 gap-2">
+                <div onclick="window.startGame('poker')" class="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center btn-clickable"><i class="fas fa-crown text-red-400 text-xl mb-1"></i><div class="text-[10px] font-bold text-slate-300">Poker</div></div>
+                <div onclick="window.startGame('blackjack')" class="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center btn-clickable"><i class="fas fa-layer-group text-blue-400 text-xl mb-1"></i><div class="text-[10px] font-bold text-slate-300">BJ 21</div></div>
+                <div onclick="window.startGame('megaslots')" class="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center btn-clickable"><i class="fas fa-gem text-orange-400 text-xl mb-1"></i><div class="text-[10px] font-bold text-slate-300">Slots</div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ABOUT -->
+    <div id="about-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 animate-fade-in" onclick="if(event.target===this)this.classList.add('hidden')">
+         <div class="bg-gray-800 rounded-2xl p-6 w-full max-w-md text-center shadow-2xl overflow-y-auto max-h-[90vh]">
+            <h3 class="text-2xl font-bold mb-4 text-white">Tentang Archon</h3>
+            <p class="text-gray-300 mb-4 text-left">Platform kasino simulasi premium. Atur strategi taruhanmu, mainkan berbagai game klasik dan modern, serta tingkatkan level VIP-mu!</p>
+            <div class="mt-6 border-t border-gray-700 pt-4 text-left">
+                <h4 class="font-semibold text-white mb-2">Catatan Perubahan (Changelog)</h4>
+                <ul class="text-sm text-gray-400 list-disc pl-5 space-y-1">
+                    <li><span class="font-semibold text-gray-300">v13.0:</span> Perbaikan Sistem Mines (Tombol & Grid).</li>
+                    <li><span class="font-semibold text-gray-300">v12.0:</span> Archon Mines, Papan Peringkat & Misi.</li>
+                    <li><span class="font-semibold text-gray-300">v11.0:</span> Toko Virtual, Inventaris, Big Win.</li>
+                </ul>
+            </div>
+            <div class="mt-6 border-t border-gray-700 pt-4 text-left"><h4 class="font-semibold text-sm text-white mb-2">Informasi Hak Cipta</h4><p class="text-xs text-gray-400 leading-relaxed">Game ini, termasuk seluruh elemen di dalamnya, adalah karya cipta yang dilindungi. Dilarang menggandakan atau mendistribusikan ulang tanpa izin tertulis dari pencipta.</p></div>
+            <p class="text-gray-400 mt-6 mb-1">Dibuat oleh:</p><p class="text-lg font-semibold text-white mb-6">Deny Kusrianto</p>
+            <div class="flex justify-center gap-4 mb-6">
+                <a href="https://www.instagram.com/kaltimff_store?igsh=bWlzeHpiZ281djN4" target="_blank" class="btn-action bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded-lg inline-flex items-center"><i class="fab fa-instagram mr-2 text-xl"></i> Instagram</a>
+                <a href="https://wa.me/message/JNJFBTFD773MB1" target="_blank" class="btn-action bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg inline-flex items-center"><i class="fab fa-whatsapp mr-2 text-xl"></i> WhatsApp</a>
+            </div>
+            <button onclick="document.getElementById('about-modal').classList.add('hidden')" class="btn-action bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg mt-6">Tutup</button>
+        </div>
+    </div>
+
+    <!-- BIG WIN OVERLAY -->
+    <div id="big-win-overlay" class="hidden fixed inset-0 z-[100] flex items-center justify-center pointer-events-none">
+        <div class="bg-black/50 absolute inset-0 backdrop-blur-sm"></div>
+        <div class="relative z-10 text-center animate-pop-up">
+            <h1 class="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600 drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)]" style="-webkit-text-stroke: 2px white;">BIG WIN</h1>
+            <div class="text-4xl text-white font-bold mt-4 drop-shadow-lg" id="big-win-amount">0</div>
+        </div>
+        <div id="coin-container"></div>
+    </div>
+
+    <!-- GAME: ARCHON MINES (FIXED) -->
+    <div id="game-mines" class="hidden w-full max-w-md p-4 flex-col items-center z-10 mt-16">
+        <div class="bg-slate-800 rounded-3xl p-6 border-4 border-cyan-800 w-full shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-cyan-400 font-bold text-xl">ARCHON MINES</h3>
+                <div class="text-right"><span class="text-xs text-slate-400">PROFIT:</span><div id="mines-profit" class="text-green-400 font-mono font-bold">0</div></div>
+            </div>
+            <!-- Grid -->
+            <div class="grid grid-cols-5 gap-2 mb-6" id="mines-grid" style="min-height: 250px;">
+                <!-- Generated JS -->
+            </div>
+            <!-- Controls -->
+            <div id="mines-controls-setup">
+                <div class="flex justify-between items-center mb-2 px-1"><span class="text-xs text-slate-400 font-bold">TARUHAN</span><span class="text-xs text-slate-400 font-bold">JUMLAH BOM</span></div>
+                <div class="flex gap-3 mb-4">
+                    <div class="flex items-center bg-slate-900 rounded-lg p-1 border border-slate-700 flex-1 justify-between">
+                        <button onclick="window.changeMinesBet(-50)" class="w-8 h-8 bg-slate-700 rounded hover:bg-slate-600 btn-clickable font-bold text-white">-</button>
+                        <span id="mines-bet-val" class="font-bold text-white">100</span>
+                        <button onclick="window.changeMinesBet(50)" class="w-8 h-8 bg-slate-700 rounded hover:bg-slate-600 btn-clickable font-bold text-white">+</button>
+                    </div>
+                    <div class="flex items-center bg-slate-900 rounded-lg p-1 border border-slate-700 w-1/3 justify-between">
+                         <button onclick="window.changeMinesCount(-1)" class="w-8 h-8 bg-slate-700 rounded hover:bg-slate-600 btn-clickable font-bold text-white">-</button>
+                         <span id="mines-count-val" class="font-bold text-red-400">3</span>
+                         <button onclick="window.changeMinesCount(1)" class="w-8 h-8 bg-slate-700 rounded hover:bg-slate-600 btn-clickable font-bold text-white">+</button>
+                    </div>
+                </div>
+                <button onclick="window.startMines()" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg btn-clickable border-b-4 border-cyan-800 active:border-b-0 active:translate-y-1">MULAI GAME</button>
+            </div>
+            <div id="mines-controls-active" class="hidden">
+                 <button onclick="window.cashOutMines()" id="btn-mines-cashout" class="w-full bg-green-600 hover:bg-green-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg btn-clickable border-b-4 border-green-800 active:border-b-0 active:translate-y-1 flex justify-between px-6">
+                    <span>AMBIL HASIL</span>
+                    <span id="mines-cashout-val">100</span>
+                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- OLD GAMES (Crash, Mahjong, Dimka, Poker, BJ, Slots) -->
+    <div id="game-crash" class="hidden w-full max-w-2xl p-4 flex-col items-center z-10 mt-16 h-[80vh]"><div class="bg-slate-900 rounded-3xl border border-slate-700 shadow-2xl w-full flex flex-col h-full overflow-hidden relative"><div class="relative flex-1 bg-[#0b1120] w-full overflow-hidden flex flex-col justify-center items-center" id="crash-canvas-container"><div class="absolute inset-0" style="background-image: linear-gradient(#1e293b 1px, transparent 1px), linear-gradient(90deg, #1e293b 1px, transparent 1px); background-size: 40px 40px; opacity: 0.3;"></div><div class="z-10 text-center"><div id="crash-mult-display" class="text-6xl md:text-8xl font-mono font-bold text-white tracking-tighter transition-colors duration-100">1.00x</div><div id="crash-status-text" class="text-sm font-bold tracking-widest text-slate-500 mt-2 uppercase">Waiting for next round...</div></div><canvas id="crash-canvas" class="absolute inset-0 w-full h-full z-0"></canvas></div><div class="bg-slate-800 p-4 border-t border-slate-700"><div class="flex justify-between items-center mb-4 px-2"><div class="flex flex-col"><span class="text-[10px] text-slate-400 font-bold uppercase">Taruhan (Posisi)</span><div class="flex items-center gap-2"><button onclick="window.changeCrashBet(-100)" class="w-8 h-8 rounded bg-slate-700 text-white font-bold hover:bg-slate-600">-</button><span id="crash-bet-val" class="text-xl font-mono font-bold text-white w-16 text-center">100</span><button onclick="window.changeCrashBet(100)" class="w-8 h-8 rounded bg-slate-700 text-white font-bold hover:bg-slate-600">+</button></div></div><div class="text-right"><span class="text-[10px] text-slate-400 font-bold uppercase">Potensi Profit</span><div id="crash-profit-est" class="text-xl font-mono font-bold text-emerald-400">0</div></div></div><button id="btn-crash-action" onclick="window.actionCrash()" class="w-full py-4 rounded-xl text-xl font-bold text-white shadow-lg transition-all transform active:scale-95 flex items-center justify-center gap-2 bg-green-600 border-b-4 border-green-800 hover:bg-green-500">PASANG POSISI (LONG)</button></div></div></div>
+    <div id="game-mahjong" class="hidden w-full max-w-md p-2 flex-col items-center z-10 mt-16"><div class="w-full bg-gradient-to-b from-red-900 to-red-700 p-3 rounded-3xl shadow-[0_0_50px_rgba(220,38,38,0.4)] border-4 border-gold-400"><div class="flex justify-center items-center gap-4 bg-red-950/50 p-2 rounded-lg mb-3 border-b-2 border-gold-400/50"><span id="mj-mult-1" class="text-lg font-bold text-gray-500 transition-all">x1</span><span id="mj-mult-2" class="text-lg font-bold text-gray-500 transition-all">x2</span><span id="mj-mult-3" class="text-lg font-bold text-gray-500 transition-all">x3</span><span id="mj-mult-4" class="text-lg font-bold text-gray-500 transition-all">x5</span></div><div class="grid grid-cols-5 gap-1 bg-red-800/50 p-2 rounded-xl border border-red-900 mb-4" id="mahjong-grid-container"></div><div class="flex items-center gap-4 bg-red-950/70 p-4 rounded-2xl border-t border-red-900"><div class="flex flex-col min-w-[60px]"><span class="text-[10px] text-red-200 font-bold">TARUHAN</span><span id="mahjong-bet-val" class="text-white font-bold text-xl">100</span></div><div class="flex flex-col gap-1"><button onclick="window.changeMahjongBet(50)" class="bg-red-800 w-8 h-6 rounded text-white btn-clickable"><i class="fas fa-chevron-up text-[10px]"></i></button><button onclick="window.changeMahjongBet(-50)" class="bg-red-800 w-8 h-6 rounded text-white btn-clickable"><i class="fas fa-chevron-down text-[10px]"></i></button></div><button onclick="window.spinMahjong()" class="flex-1 bg-gradient-to-b from-green-500 to-green-700 text-white font-bold py-4 rounded-xl shadow-lg border-b-4 border-green-900 btn-clickable active:border-b-0 active:translate-y-1 tracking-widest">PUTAR</button></div><div id="mahjong-win-text" class="text-center text-gold-400 font-bold text-lg h-6 mt-2"></div></div></div>
+    <div id="game-dimka" class="hidden w-full max-w-3xl p-2 flex-col items-center z-10 mt-16"><div class="bg-zeus-900 p-4 rounded-3xl shadow-[0_0_50px_rgba(168,85,247,0.5)] w-full relative overflow-hidden border border-purple-500"><div class="flex justify-between items-center mb-4"><div class="flex flex-col"><h3 class="text-gold-300 font-bold text-2xl italic">DIMKA PETIR</h3><span class="text-[10px] text-purple-200">PAY ANYWHERE • TUMBLE</span></div><div class="text-right"><div class="text-[10px] text-purple-200">WIN</div><div id="dimka-win-display" class="text-gold-400 font-bold text-xl font-mono">0</div></div></div><div class="grid grid-cols-6 gap-1 bg-black/40 p-2 rounded-xl border border-purple-500/50 mb-4 relative" id="dimka-grid-container"></div><div id="dimka-mult-container" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 hidden z-20 pointer-events-none"><div class="text-6xl font-bold text-white drop-shadow-[0_0_10px_red] animate-bounce-in" id="dimka-mult-val">x500</div></div><div class="flex items-center gap-4 bg-purple-900/80 p-4 rounded-2xl border-t border-purple-500"><div class="flex flex-col min-w-[60px]"><span class="text-[10px] text-purple-200 font-bold">TARUHAN</span><span id="dimka-bet-val" class="text-white font-bold text-xl">200</span></div><div class="flex flex-col gap-1"><button onclick="window.changeDimkaBet(100)" class="bg-purple-700 w-8 h-6 rounded text-white btn-clickable"><i class="fas fa-chevron-up text-[10px]"></i></button><button onclick="window.changeDimkaBet(-100)" class="bg-purple-700 w-8 h-6 rounded text-white btn-clickable"><i class="fas fa-chevron-down text-[10px]"></i></button></div><button onclick="window.spinDimka()" class="flex-1 bg-gradient-to-b from-green-500 to-green-700 text-white font-bold py-4 rounded-xl shadow-lg border-b-4 border-green-900 btn-clickable active:border-b-0 active:translate-y-1 tracking-widest">PUTAR</button></div></div></div>
+    <div id="game-poker" class="hidden w-full max-w-md p-2 flex-col items-center z-10 mt-12 h-[85vh] justify-center"><div class="relative w-full aspect-[3/4] bg-[#0f4528] rounded-[40px] border-[8px] border-slate-800 shadow-2xl flex flex-col p-3 overflow-hidden"><div class="h-[25%] flex flex-col items-center justify-center bg-black/20 rounded-t-3xl mb-2 relative border-b border-white/5"><div id="pk-community" class="flex gap-1 h-[60px] items-center justify-center w-full min-h-[60px]"></div><div class="bg-black/60 px-4 py-1 rounded-full mt-2 flex items-center gap-2 border border-gold-500/30 shadow"><i class="fas fa-coins text-gold-400 text-xs"></i><span id="pk-pot" class="text-white font-mono text-sm font-bold">0</span></div></div><div class="h-[35%] w-full grid grid-cols-3 gap-2 px-2 items-center"><div class="flex flex-col items-center transition duration-300" id="bot-ui-0"><div class="w-10 h-10 rounded-full bg-slate-700 border-2 border-slate-500 flex items-center justify-center mb-1 relative"><i class="fas fa-robot text-slate-300"></i><div id="bot-bubble-0" class="absolute -top-6 bg-white text-black text-[9px] px-2 py-0.5 rounded font-bold shadow hidden z-20">...</div></div><div class="flex gap-0.5" id="bot-hand-0"></div></div><div class="flex flex-col items-center transition duration-300" id="bot-ui-1"><div class="w-10 h-10 rounded-full bg-slate-700 border-2 border-slate-500 flex items-center justify-center mb-1 relative"><i class="fas fa-robot text-slate-300"></i><div id="bot-bubble-1" class="absolute -top-6 bg-white text-black text-[9px] px-2 py-0.5 rounded font-bold shadow hidden z-20">...</div></div><div class="flex gap-0.5" id="bot-hand-1"></div></div><div class="flex flex-col items-center transition duration-300" id="bot-ui-2"><div class="w-10 h-10 rounded-full bg-slate-700 border-2 border-slate-500 flex items-center justify-center mb-1 relative"><i class="fas fa-robot text-slate-300"></i><div id="bot-bubble-2" class="absolute -top-6 bg-white text-black text-[9px] px-2 py-0.5 rounded font-bold shadow hidden z-20">...</div></div><div class="flex gap-0.5" id="bot-hand-2"></div></div></div><div class="flex-1 flex flex-col justify-end pb-3 relative"><div class="absolute top-0 right-2 bg-slate-900/90 px-3 py-1.5 rounded-lg border border-gold-500/50 text-right shadow-lg"><span class="text-[8px] text-slate-400 block uppercase font-bold tracking-wider">YOUR HAND</span><span id="pk-hand-eval" class="text-xs text-gold-400 font-bold">High Card</span></div><div class="flex flex-col items-center mb-4"><div id="pk-player-hand" class="flex gap-1 shadow-2xl transform hover:scale-105 transition"></div><div class="text-[10px] text-white font-bold mt-2 bg-blue-600 px-3 py-0.5 rounded-full shadow">YOU</div></div><div id="pk-actions" class="grid grid-cols-4 gap-2 w-full px-2"><button onclick="window.pkPlayerAction('fold')" class="bg-red-800 hover:bg-red-700 text-white py-3 rounded-lg font-bold text-xs border-b-4 border-red-950 btn-clickable">FOLD</button><button onclick="window.pkPlayerAction('check')" id="btn-check" class="bg-slate-600 hover:bg-slate-500 text-white py-3 rounded-lg font-bold text-xs border-b-4 border-slate-800 btn-clickable">CHECK</button><button onclick="window.pkPlayerAction('call')" id="btn-call" class="bg-green-600 hover:bg-green-500 text-white py-3 rounded-lg font-bold text-xs border-b-4 border-green-900 hidden btn-clickable">CALL</button><button onclick="window.pkPlayerAction('raise')" class="bg-gold-600 hover:bg-gold-500 text-white py-3 rounded-lg font-bold text-xs border-b-4 border-gold-800 col-span-2 btn-clickable">RAISE 50</button></div><button onclick="window.initPoker()" id="pk-next-btn" class="hidden w-full bg-gradient-to-r from-gold-600 to-yellow-500 text-black font-bold py-4 rounded-xl shadow-lg animate-pulse btn-clickable text-lg">RONDE BARU</button><div id="pk-status-msg" class="text-center text-white text-xs mt-2 italic h-4 font-medium"></div></div></div></div>
+    <div id="game-blackjack" class="hidden w-full max-w-md p-4 flex-col items-center z-10 mt-14"><div id="bj-betting" class="w-full bg-slate-800 p-8 rounded-2xl text-center border border-slate-600 shadow-2xl"><h3 class="text-white font-bold mb-6 text-xl">PASANG TARUHAN</h3><div class="text-5xl font-mono text-gold-400 mb-6 font-bold tracking-tighter" id="bj-bet-display">50</div><input type="range" min="10" max="500" step="10" value="50" class="w-full accent-gold-500 mb-8 h-2 bg-slate-700 rounded-lg" oninput="document.getElementById('bj-bet-display').innerText=this.value; window.bjBet=parseInt(this.value)"><button onclick="window.bjDeal()" class="w-full bg-green-600 text-white font-bold py-4 rounded-xl shadow-lg btn-clickable border-b-4 border-green-800">DEAL KARTU</button></div><div id="bj-table" class="hidden w-full"><div class="bg-[#0f4528] p-6 rounded-3xl border-[8px] border-slate-800 min-h-[350px] relative flex flex-col justify-between shadow-2xl"><div class="text-center"><span class="text-[10px] text-white/60 font-bold tracking-widest bg-black/20 px-3 py-1 rounded-full">DEALER</span><div id="bj-d-cards" class="flex justify-center gap-2 mt-3 min-h-[70px]"></div><div id="bj-d-score" class="text-xs text-gold-400 h-4 mt-1 font-mono"></div></div><div id="bj-msg" class="text-center text-2xl text-white font-bold drop-shadow-md my-2 min-h-[2rem]"></div><div class="text-center"><div id="bj-p-score" class="text-xs text-gold-400 mb-1 font-mono">Score: 0</div><div id="bj-p-cards" class="flex justify-center gap-2 min-h-[70px]"></div><span class="text-[10px] text-white/60 font-bold tracking-widest bg-black/20 px-3 py-1 rounded-full mt-2 inline-block">PLAYER</span></div></div><div id="bj-controls" class="flex gap-3 mt-6"><button onclick="window.bjHit()" class="flex-1 bg-blue-600 text-white py-4 rounded-xl font-bold shadow btn-clickable border-b-4 border-blue-800">HIT</button><button onclick="window.bjStand()" class="flex-1 bg-red-600 text-white py-4 rounded-xl font-bold shadow btn-clickable border-b-4 border-red-800">STAND</button></div><button id="bj-reset" onclick="window.initBj()" class="hidden w-full bg-gold-600 text-white py-4 rounded-xl font-bold mt-6 shadow btn-clickable border-b-4 border-gold-800">MAIN LAGI</button></div></div>
+    <div id="game-megaslots" class="hidden w-full max-w-2xl p-4 flex-col items-center z-10 mt-16"><div class="bg-slate-900 p-6 rounded-3xl border-4 border-orange-600 shadow-[0_0_50px_rgba(234,88,12,0.3)] w-full"><div class="flex justify-between items-center mb-4"><h3 class="text-orange-500 font-bold text-xl italic tracking-wider">MEGA SLOTS</h3></div><div class="bg-black p-2 rounded-xl border-2 border-slate-700 mb-4 relative overflow-hidden"><div class="grid grid-cols-5 gap-1" id="mega-grid-container-main"></div></div><div class="flex justify-between text-xs text-slate-300 mb-4 px-2 font-mono"><span>LINES: 5</span><span id="mega-win-text" class="text-green-400 font-bold h-4 text-lg"></span></div><div class="flex items-center gap-4 bg-slate-800 p-4 rounded-2xl border-t border-slate-700"><div class="flex flex-col min-w-[60px]"><span class="text-[10px] text-slate-400 font-bold">TARUHAN</span><span id="mega-bet-val" class="text-white font-bold text-xl">100</span></div><div class="flex flex-col gap-1"><button onclick="window.changeMegaBet(50)" class="bg-slate-700 w-8 h-6 rounded text-white btn-clickable"><i class="fas fa-chevron-up text-[10px]"></i></button><button onclick="window.changeMegaBet(-50)" class="bg-slate-700 w-8 h-6 rounded text-white btn-clickable"><i class="fas fa-chevron-down text-[10px]"></i></button></div><button onclick="window.spinMega()" id="btn-spin-mega" class="flex-1 bg-gradient-to-b from-orange-500 to-red-600 text-white font-bold py-4 rounded-xl shadow-lg border-b-4 border-red-800 btn-clickable tracking-widest">PUTAR</button></div></div></div>
+
+    <!-- SCRIPT ENGINE -->
+    <script>
+        // --- GLOBAL VARIABLES ---
+        window.credits = 1000;
+        window.xp = 0;
+        window.level = 1;
+        window.audioInit = false;
+        window.synth = new Tone.Synth().toDestination();
+        window.synthLoop = new Tone.NoiseSynth({noise: {type: 'pink'}, envelope: {attack: 0.1, decay: 0.1, sustain: 1, release: 0.1}}).toDestination();
+        window.synthLoop.volume.value = -20;
+
+        // Shop Data
+        window.inventory = ['bg_default', 'card_default'];
+        window.equipped = { bg: 'bg_default', card: 'card_default' };
+        window.shopItems = [
+            { id: 'bg_luxury', name: 'Luxury Theme', type: 'bg', price: 500, icon: 'fa-gem', class: 'bg-theme-luxury' },
+            { id: 'bg_cyber', name: 'Cyber Theme', type: 'bg', price: 1000, icon: 'fa-microchip', class: 'bg-theme-cyber' },
+            { id: 'bg_royal', name: 'Royal Red', type: 'bg', price: 1500, icon: 'fa-crown', class: 'bg-theme-royal' },
+            { id: 'card_gold', name: 'Gold Deck', type: 'card', price: 800, icon: 'fa-sun', class: 'card-skin-gold' },
+            { id: 'card_cyber', name: 'Cyber Deck', type: 'card', price: 1200, icon: 'fa-robot', class: 'card-skin-cyber' }
+        ];
+
+        // Achievement Data
+        window.achievements = [
+            { id: 'first_win', title: 'Pemula Hoki', desc: 'Menangkan game pertamamu', reward: 100, completed: false },
+            { id: 'rich', title: 'Sultan', desc: 'Miliki lebih dari 5000 kredit', reward: 500, completed: false },
+            { id: 'mines_pro', title: 'Penjinak Bom', desc: 'Buka 10 kotak di Mines tanpa meledak', reward: 300, completed: false },
+            { id: 'high_level', title: 'Veteran', desc: 'Capai Level 5', reward: 1000, completed: false }
+        ];
+
+        // Bot Leaderboard Data
+        window.bots = [
+            { name: 'Sultan_88', credits: 5000 },
+            { name: 'NagaHitam', credits: 8500 },
+            { name: 'CryptoKing', credits: 12000 },
+            { name: 'Zeus', credits: 3000 },
+            { name: 'RatuHoki', credits: 6000 },
+            { name: 'Whale01', credits: 20000 }
+        ];
+
+        // --- SYSTEM CORE ---
+        window.playSfx = function(t) {
+            if(!window.audioInit) { Tone.start(); window.audioInit=true; }
+            try {
+                if(t==='click') window.synth.triggerAttackRelease("C5","32n");
+                if(t==='win') window.synth.triggerAttackRelease("G5","8n");
+                if(t==='lose') window.synth.triggerAttackRelease("C3","8n");
+                if(t==='cardFlip') window.synth.triggerAttackRelease("A4","32n");
+                if(t==='crash_start') window.synth.triggerAttackRelease("C4","16n");
+                if(t==='crash_boom') window.synth.triggerAttackRelease("A2","8n");
+                if(t==='mine_safe') window.synth.triggerAttackRelease("E5","16n");
+                if(t==='mine_boom') window.synth.triggerAttackRelease("C2","8n");
+                if(t==='achieve') {
+                    const now = Tone.now();
+                    window.synth.triggerAttackRelease("C5", "8n", now);
+                    window.synth.triggerAttackRelease("E5", "8n", now + 0.1);
+                    window.synth.triggerAttackRelease("G5", "8n", now + 0.2);
+                }
+            } catch(e){}
+        }
+
+        window.checkAchievements = function(triggerType, val) {
+            window.achievements.forEach(ach => {
+                if(ach.completed) return;
+                let completed = false;
+                if(ach.id === 'first_win' && triggerType === 'win') completed = true;
+                if(ach.id === 'rich' && window.credits >= 5000) completed = true;
+                if(ach.id === 'mines_pro' && triggerType === 'mines_tile' && val >= 10) completed = true;
+                if(ach.id === 'high_level' && window.level >= 5) completed = true;
+
+                if(completed) {
+                    ach.completed = true;
+                    window.updateCredits(ach.reward);
+                    window.showToast(`Misi Selesai: ${ach.title}`, `+${ach.reward} Credits`);
+                    window.playSfx('achieve');
+                }
+            });
+        }
+
+        window.showToast = function(title, msg) {
+            const cont = document.getElementById('toast-container');
+            const el = document.createElement('div');
+            el.className = 'bg-slate-800 border border-gold-500 text-white p-3 rounded-lg shadow-2xl flex items-center gap-3 animate-slide-down';
+            el.innerHTML = `<i class="fas fa-medal text-gold-400 text-2xl"></i><div><div class="font-bold text-sm text-gold-400">${title}</div><div class="text-xs">${msg}</div></div>`;
+            cont.appendChild(el);
+            setTimeout(() => el.remove(), 3000);
+        }
+
+        // --- XP & LEVEL ---
+        window.ranks = ["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Archon"];
+        window.getLevelData = function() {
+            const req = window.level * 500;
+            const rankIndex = Math.min(Math.floor((window.level - 1) / 5), window.ranks.length - 1);
+            return { req, rank: window.ranks[rankIndex] };
+        }
+        window.addXp = function(amount) {
+            window.xp += amount;
+            let data = window.getLevelData();
+            if(window.xp >= data.req) {
+                window.xp -= data.req; window.level++; window.playSfx('win');
+                window.checkAchievements('level', window.level);
+            }
+            window.updateHud();
+        }
+
+        window.updateHud = function() {
+            document.getElementById('user-credits').innerText = window.credits;
+            let data = window.getLevelData();
+            document.getElementById('user-lvl').innerText = "Lvl " + window.level;
+            document.getElementById('user-rank').innerText = data.rank;
+            const rankColors = {'Bronze':'#cd7f32', 'Silver':'#c0c0c0', 'Gold':'#ffd700', 'Archon':'#b9f2ff'};
+            document.getElementById('user-rank').style.color = rankColors[data.rank] || '#cbd5e1';
+            let pct = Math.min(100, (window.xp / data.req) * 100);
+            document.getElementById('xp-bar').style.width = pct + "%";
+        }
+        window.updateCredits = function(amt) {
+            window.credits += amt;
+            if (amt < 0) window.addXp(Math.abs(amt));
+            else if(amt > 0) window.checkAchievements('win', amt);
+            
+            window.checkAchievements('rich', window.credits);
+            window.updateHud();
+            if(amt > 0) { document.getElementById('user-credits').classList.add('text-gold-400', 'scale-110'); setTimeout(()=>document.getElementById('user-credits').classList.remove('text-gold-400', 'scale-110'), 200); }
+        }
+
+        // --- NAVIGATION ---
+        window.showScreen = function(id) {
+            window.playSfx('click');
+            document.querySelectorAll('body > div[id^="screen-"], body > div[id^="game-"]').forEach(el => el.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+            document.getElementById('hud').classList.toggle('hidden', id === 'screen-menu');
+            window.updateHud();
+            
+            // Init specific screens
+            if(id === 'game-crash') window.initCrash();
+            if(id === 'game-mahjong') window.initMahjong();
+            if(id === 'game-dimka') window.initDimka();
+            if(id === 'game-megaslots') window.initMega();
+            if(id === 'game-poker') window.initPoker();
+            if(id === 'game-blackjack') window.initBj();
+            if(id === 'screen-shop') window.initShop();
+            if(id === 'game-mines') window.initMines();
+            if(id === 'screen-leaderboard') window.initLeaderboard();
+            if(id === 'screen-missions') window.initMissions();
+        }
+        window.goToLobby = function() { window.showScreen('screen-menu'); if(window.crashAnim) cancelAnimationFrame(window.crashAnim); }
+        window.showModal = function(id) { document.getElementById(id).classList.remove('hidden'); window.playSfx('click'); }
+        window.startGame = function(g) { window.showScreen(`game-${g}`); }
+
+        // --- FEATURE: LEADERBOARD ---
+        window.initLeaderboard = function() {
+            const list = document.getElementById('leaderboard-list');
+            list.innerHTML = '';
+            // Mix bots and player
+            let allUsers = [...window.bots, { name: 'ANDA (You)', credits: window.credits, isMe: true }];
+            // Sort by credits descending
+            allUsers.sort((a, b) => b.credits - a.credits);
+            
+            allUsers.forEach((u, i) => {
+                let rankColor = i === 0 ? 'text-gold-400' : (i === 1 ? 'text-slate-300' : (i === 2 ? 'text-orange-700' : 'text-slate-500'));
+                let rowClass = u.isMe ? 'bg-blue-900/30 border-l-4 border-blue-500' : '';
+                
+                list.innerHTML += `
+                    <div class="p-4 flex justify-between items-center ${rowClass}">
+                        <div class="flex items-center gap-3">
+                            <span class="font-bold font-mono text-lg w-6 ${rankColor}">#${i+1}</span>
+                            <span class="font-bold text-sm ${u.isMe ? 'text-white' : 'text-slate-400'}">${u.name}</span>
+                        </div>
+                        <span class="font-mono text-gold-500 text-sm">${u.credits.toLocaleString()}</span>
+                    </div>
+                `;
+            });
+        }
+
+        // --- FEATURE: MISSIONS UI ---
+        window.initMissions = function() {
+            const list = document.getElementById('missions-list');
+            list.innerHTML = '';
+            window.achievements.forEach(ach => {
+                let btnState = ach.completed 
+                    ? `<span class="text-green-400 font-bold text-xs"><i class="fas fa-check"></i> Selesai</span>` 
+                    : `<span class="text-slate-500 font-bold text-xs">Belum Selesai</span>`;
+                
+                let borderClass = ach.completed ? 'border-green-900/50 bg-green-900/10' : 'border-slate-700 bg-slate-800';
+                
+                list.innerHTML += `
+                    <div class="p-4 rounded-xl border ${borderClass} flex justify-between items-center">
+                        <div>
+                            <div class="font-bold text-white text-sm mb-1">${ach.title}</div>
+                            <div class="text-xs text-slate-400">${ach.desc}</div>
+                        </div>
+                        <div class="text-right flex flex-col items-end gap-1">
+                             <div class="text-gold-400 text-xs font-bold">+${ach.reward}</div>
+                             ${btnState}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // --- NEW GAME: ARCHON MINES (FIXED & OPTIMIZED) ---
+        let minesBet = 100;
+        let minesCount = 3;
+        let minesGrid = []; // 0 = safe, 1 = bomb
+        let minesState = 'idle'; // idle, playing, cashed_out, dead
+        let minesRevealed = 0;
+        
+        window.initMines = function() {
+            // CRITICAL FIX: Force reset state so buttons work on re-entry
+            minesState = 'idle';
+            minesGrid = []; 
+            window.renderMinesGrid(false); // Render empty/preview grid
+            window.updateMinesUI();
+        }
+
+        window.changeMinesBet = function(v) { 
+            if(minesState !== 'idle') return; 
+            if(minesBet + v >= 50) minesBet += v; 
+            document.getElementById('mines-bet-val').innerText = minesBet; 
+        }
+        
+        window.changeMinesCount = function(v) { 
+            if(minesState !== 'idle') return; 
+            if(minesCount + v >= 1 && minesCount + v <= 24) minesCount += v; 
+            document.getElementById('mines-count-val').innerText = minesCount; 
+        }
+
+        window.renderMinesGrid = function(revealAll) {
+            const gridEl = document.getElementById('mines-grid');
+            gridEl.innerHTML = '';
+            
+            // FIX: If first run or reset, make 25 empty slots if array is empty
+            if(minesGrid.length === 0) {
+                for(let i=0; i<25; i++) minesGrid.push({isBomb: false, revealed: false});
+            }
+
+            // FIX: Use String Building for performance and stability (prevents disappearing)
+            let htmlContent = '';
+            
+            minesGrid.forEach((cell, i) => {
+                let content = '';
+                let className = 'mine-tile';
+                
+                if(cell.revealed || revealAll) {
+                    if(cell.isBomb) {
+                        className += ' revealed-bomb';
+                        content = '<i class="fas fa-bomb"></i>';
+                    } else if(cell.revealed) {
+                        className += ' revealed-safe';
+                        content = '<i class="fas fa-gem"></i>';
+                    } else if (revealAll && !cell.isBomb) {
+                         content = '<i class="fas fa-gem opacity-30"></i>'; // Show unused gems dimmed
+                    }
+                }
+
+                // Only add onclick if active game and tile not revealed
+                let clickAttr = (minesState === 'playing' && !cell.revealed) ? `onclick="window.clickMineTile(${i})"` : '';
+                htmlContent += `<div id="mine-${i}" class="${className}" ${clickAttr}>${content}</div>`;
+            });
+            
+            gridEl.innerHTML = htmlContent;
+        }
+
+        window.startMines = function() {
+            if(window.credits < minesBet) { alert("Kredit tidak cukup!"); return; }
+            window.updateCredits(-minesBet);
+            
+            minesState = 'playing';
+            minesRevealed = 0;
+            
+            // Generate Grid logic
+            minesGrid = Array(25).fill(null).map(() => ({isBomb: false, revealed: false}));
+            let bombsPlaced = 0;
+            while(bombsPlaced < minesCount) {
+                let r = Math.floor(Math.random() * 25);
+                if(!minesGrid[r].isBomb) {
+                    minesGrid[r].isBomb = true;
+                    bombsPlaced++;
+                }
+            }
+            
+            window.renderMinesGrid(false);
+            window.updateMinesUI();
+            window.playSfx('click');
+        }
+
+        window.clickMineTile = function(idx) {
+            if(minesState !== 'playing') return;
+            if(minesGrid[idx].revealed) return;
+            
+            minesGrid[idx].revealed = true;
+            const tile = document.getElementById(`mine-${idx}`);
+            
+            if(minesGrid[idx].isBomb) {
+                // EXPLODE
+                minesState = 'dead';
+                tile.className = 'mine-tile revealed-bomb animate-shake'; // Reset class to avoid conflict
+                tile.innerHTML = '<i class="fas fa-bomb"></i>';
+                window.playSfx('mine_boom');
+                setTimeout(() => window.renderMinesGrid(true), 500); // Reveal all
+            } else {
+                // SAFE
+                minesRevealed++;
+                tile.className = 'mine-tile revealed-safe animate-bounce-in'; // Reset class
+                tile.innerHTML = '<i class="fas fa-gem"></i>';
+                tile.onclick = null; // Remove click immediately
+                window.playSfx('mine_safe');
+                window.checkAchievements('mines_tile', minesRevealed);
+            }
+            window.updateMinesUI();
+        }
+
+        window.cashOutMines = function() {
+            if(minesState !== 'playing') return;
+            minesState = 'cashed_out';
+            let profit = window.calculateMinesProfit();
+            window.updateCredits(profit);
+            window.playSfx('win');
+            window.checkBigWin(profit, minesBet);
+            window.renderMinesGrid(true); // Reveal map
+            window.updateMinesUI();
+        }
+
+        window.calculateMinesProfit = function() {
+            // Simple multiplier formula based on probability
+            let safeTiles = 25 - minesCount;
+            let mult = 1;
+            for(let i=0; i<minesRevealed; i++) {
+                mult *= (25 - i) / (safeTiles - i);
+            }
+            // Safety floor
+            if (mult < 1) mult = 1;
+            return Math.floor(minesBet * mult);
+        }
+
+        window.updateMinesUI = function() {
+            const setupDiv = document.getElementById('mines-controls-setup');
+            const activeDiv = document.getElementById('mines-controls-active');
+            const profitDisplay = document.getElementById('mines-profit');
+            
+            if(minesState === 'idle' || minesState === 'dead' || minesState === 'cashed_out') {
+                setupDiv.classList.remove('hidden');
+                activeDiv.classList.add('hidden');
+                profitDisplay.innerText = minesState === 'cashed_out' ? `WON ${window.calculateMinesProfit()}` : '0';
+                if(minesState === 'dead') profitDisplay.innerText = "BOOM!";
+            } else {
+                setupDiv.classList.add('hidden');
+                activeDiv.classList.remove('hidden');
+                let currentVal = window.calculateMinesProfit();
+                profitDisplay.innerText = currentVal;
+                document.getElementById('mines-cashout-val').innerText = currentVal;
+            }
+        }
+
+        // --- SHOP SYSTEM ---
+        window.initShop = function() {
+            const buyCont = document.getElementById('shop-buy-container');
+            const invCont = document.getElementById('shop-inv-container');
+            buyCont.innerHTML = ''; invCont.innerHTML = '';
+            window.shopItems.forEach(item => {
+                const owned = window.inventory.includes(item.id);
+                if(!owned) {
+                    buyCont.innerHTML += `<div class="bg-slate-800 p-3 rounded-lg border border-slate-700 flex flex-col items-center gap-2"><div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-gold-400"><i class="fas ${item.icon}"></i></div><div class="text-center"><div class="font-bold text-sm text-white">${item.name}</div><div class="text-xs text-gold-400">${item.price} Coins</div></div><button onclick="window.buyItem('${item.id}')" class="w-full bg-green-600 hover:bg-green-500 py-1.5 rounded text-xs font-bold text-white mt-1 btn-clickable">BELI</button></div>`;
+                }
+                if(owned) {
+                    const isEquipped = (window.equipped.bg === item.id || window.equipped.card === item.id);
+                    invCont.innerHTML += `<div class="bg-slate-800 p-3 rounded-lg border ${isEquipped ? 'border-gold-500' : 'border-slate-700'} flex flex-col items-center gap-2"><div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-white"><i class="fas ${item.icon}"></i></div><div class="text-center"><div class="font-bold text-sm text-white">${item.name}</div><div class="text-xs text-slate-400">${item.type.toUpperCase()}</div></div><button onclick="window.equipItem('${item.id}')" class="w-full ${isEquipped ? 'bg-slate-600 cursor-default' : 'bg-blue-600 hover:bg-blue-500'} py-1.5 rounded text-xs font-bold text-white mt-1 btn-clickable">${isEquipped ? 'DIPAKAI' : 'PAKAI'}</button></div>`;
+                }
+            });
+            invCont.innerHTML += `<div class="bg-slate-800 p-3 rounded-lg border ${window.equipped.bg==='bg_default'?'border-gold-500':'border-slate-700'} flex flex-col items-center gap-2"><div class="font-bold text-xs text-white">Default BG</div><button onclick="window.equipItem('bg_default')" class="w-full py-1 rounded text-xs bg-blue-600 text-white">PAKAI</button></div>`;
+            invCont.innerHTML += `<div class="bg-slate-800 p-3 rounded-lg border ${window.equipped.card==='card_default'?'border-gold-500':'border-slate-700'} flex flex-col items-center gap-2"><div class="font-bold text-xs text-white">Default Card</div><button onclick="window.equipItem('card_default')" class="w-full py-1 rounded text-xs bg-blue-600 text-white">PAKAI</button></div>`;
+        }
+        window.switchShopTab = function(tab) { document.getElementById('shop-buy-container').classList.toggle('hidden', tab !== 'buy'); document.getElementById('shop-inv-container').classList.toggle('hidden', tab !== 'inv'); document.getElementById('tab-buy').className = tab==='buy' ? "flex-1 py-2 rounded font-bold text-xs bg-gold-600 text-white transition" : "flex-1 py-2 rounded font-bold text-xs text-slate-400 hover:text-white transition"; document.getElementById('tab-inv').className = tab==='inv' ? "flex-1 py-2 rounded font-bold text-xs bg-gold-600 text-white transition" : "flex-1 py-2 rounded font-bold text-xs text-slate-400 hover:text-white transition"; window.initShop(); }
+        window.buyItem = function(id) { const item = window.shopItems.find(i => i.id === id); if(window.credits >= item.price) { window.updateCredits(-item.price); window.inventory.push(id); window.playSfx('win'); window.initShop(); } else { alert("Koin tidak cukup!"); } }
+        window.equipItem = function(id) { const item = window.shopItems.find(i => i.id === id); if(!item) { if(id === 'bg_default') { document.body.className = "min-h-screen flex flex-col items-center justify-center select-none"; window.equipped.bg = id; } if(id === 'card_default') { document.body.classList.remove('card-skin-gold', 'card-skin-cyber'); window.equipped.card = id; } } else { if(item.type === 'bg') { document.body.className = `min-h-screen flex flex-col items-center justify-center select-none ${item.class}`; window.equipped.bg = id; } if(item.type === 'card') { document.body.classList.remove('card-skin-gold', 'card-skin-cyber'); document.body.classList.add(item.class); window.equipped.card = id; } } window.initShop(); }
+
+        // --- BIG WIN ---
+        window.checkBigWin = function(winAmt, betAmt) { if(winAmt >= betAmt * 10 && winAmt > 0) { const overlay = document.getElementById('big-win-overlay'); const amtDisplay = document.getElementById('big-win-amount'); const coinCont = document.getElementById('coin-container'); amtDisplay.innerText = "+" + winAmt; overlay.classList.remove('hidden'); coinCont.innerHTML = ''; for(let i=0; i<30; i++) { let c = document.createElement('div'); c.className = 'coin-particle animate-coin-fall'; c.style.left = Math.random() * 100 + "vw"; c.style.animationDelay = Math.random() * 0.5 + "s"; coinCont.appendChild(c); } window.playSfx('win'); setTimeout(() => { overlay.classList.add('hidden'); }, 3500); } }
+
+        // --- OLD GAMES LOGIC ---
+        let crashBet = 100, crashState = 'idle', crashMult = 1.00, crashLimit = 0, crashStartTime = 0, crashAnim = null, crashCanvas, crashCtx;
+        window.initCrash = function() { crashCanvas = document.getElementById('crash-canvas'); crashCtx = crashCanvas.getContext('2d'); window.resizeCrashCanvas(); window.resetCrashUI(); }
+        window.resizeCrashCanvas = function() { const container = document.getElementById('crash-canvas-container'); crashCanvas.width = container.clientWidth; crashCanvas.height = container.clientHeight; }
+        window.changeCrashBet = function(v) { if(crashState !== 'idle') return; if(crashBet + v >= 100) crashBet += v; document.getElementById('crash-bet-val').innerText = crashBet; }
+        window.actionCrash = function() { if (crashState === 'idle') { if(window.credits < crashBet) { alert("Kredit kurang!"); return; } window.updateCredits(-crashBet); window.startCrashRound(); } else if (crashState === 'running') { window.cashOutCrash(); } }
+        window.resetCrashUI = function() { crashState = 'idle'; crashMult = 1.00; document.getElementById('crash-mult-display').innerText = "1.00x"; document.getElementById('crash-mult-display').className = "text-6xl md:text-8xl font-mono font-bold text-white tracking-tighter"; document.getElementById('crash-status-text').innerText = "SIAPKAN POSISI"; document.getElementById('crash-profit-est').innerText = "0"; const btn = document.getElementById('btn-crash-action'); btn.className = "w-full py-4 rounded-xl text-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 bg-green-600 border-b-4 border-green-800 hover:bg-green-500"; btn.innerHTML = "PASANG POSISI (LONG)"; btn.disabled = false; crashCtx.clearRect(0,0, crashCanvas.width, crashCanvas.height); }
+        window.startCrashRound = function() { window.playSfx('crash_start'); crashState = 'running'; if(Math.random() < 0.03) { crashLimit = 1.00; } else { crashLimit = 0.99 / (1 - Math.random()); if(crashLimit > 100) crashLimit = 100; } const btn = document.getElementById('btn-crash-action'); btn.className = "w-full py-4 rounded-xl text-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 bg-gold-500 border-b-4 border-gold-700 hover:bg-gold-400"; btn.innerHTML = "TAKE PROFIT"; document.getElementById('crash-status-text').innerText = "MARKET BULLISH..."; crashStartTime = Date.now(); window.loopCrash(); }
+        window.loopCrash = function() { if(crashState !== 'running' && crashState !== 'cashed_out' && crashState !== 'crashed') return; let elapsed = (Date.now() - crashStartTime) / 1000; let rawMult = 1 + (Math.pow(elapsed, 2) / 8); if(rawMult >= crashLimit) { rawMult = crashLimit; window.crashIt(); } if(crashState === 'running') { crashMult = rawMult; document.getElementById('crash-mult-display').innerText = crashMult.toFixed(2) + "x"; document.getElementById('crash-mult-display').classList.toggle('text-green-400', true); let potentialProfit = Math.floor(crashBet * crashMult) - crashBet; document.getElementById('crash-profit-est').innerText = "+" + potentialProfit; } const w = crashCanvas.width; const h = crashCanvas.height; crashCtx.fillStyle = 'rgba(15, 23, 42, 0.3)'; crashCtx.fillRect(0, 0, w, h); crashCtx.beginPath(); crashCtx.strokeStyle = '#10B981'; crashCtx.lineWidth = 4; let x = (elapsed / 8) * w; let y = h - ((rawMult - 1) / (crashLimit > 5 ? 5 : 2)) * h; if(y < 50) y = 50; if(x > w) x = w; crashCtx.moveTo(0, h); crashCtx.quadraticCurveTo(x/2, h, x, y); crashCtx.stroke(); crashCtx.beginPath(); crashCtx.arc(x, y, 8, 0, Math.PI*2); crashCtx.fillStyle = '#F59E0B'; crashCtx.fill(); if(crashState === 'running' || crashState === 'cashed_out') { crashAnim = requestAnimationFrame(window.loopCrash); } }
+        window.cashOutCrash = function() { if(crashState !== 'running') return; crashState = 'cashed_out'; let winAmt = Math.floor(crashBet * crashMult); window.updateCredits(winAmt); window.playSfx('win'); window.checkBigWin(winAmt, crashBet); const btn = document.getElementById('btn-crash-action'); btn.className = "w-full py-4 rounded-xl text-xl font-bold text-white shadow-lg bg-slate-700 border-slate-600 cursor-not-allowed"; btn.innerHTML = `PROFIT: ${winAmt}`; btn.disabled = true; document.getElementById('crash-status-text').innerText = "POSISI DITUTUP (PROFIT)"; document.getElementById('crash-mult-display').classList.remove('text-white'); document.getElementById('crash-mult-display').classList.add('text-gold-400'); }
+        window.crashIt = function() { crashState = 'crashed'; window.playSfx('crash_boom'); document.getElementById('crash-mult-display').innerText = crashLimit.toFixed(2) + "x"; document.getElementById('crash-mult-display').className = "text-6xl md:text-8xl font-mono font-bold text-red-600 tracking-tighter animate-pulse"; document.getElementById('crash-status-text').innerText = "MARKET CRASH (REKT)"; document.getElementById('crash-status-text').className = "text-sm font-bold tracking-widest text-red-500 mt-2 uppercase"; const btn = document.getElementById('btn-crash-action'); btn.disabled = true; if(btn.innerHTML.includes("LONG")) { btn.className = "w-full py-4 rounded-xl text-xl font-bold text-white bg-red-800 border-red-950 cursor-not-allowed"; btn.innerHTML = "LIQUIDATED"; } setTimeout(() => { window.resetCrashUI(); }, 3000); }
+
+        const P_SUITS = ['♠','♥','♦','♣']; const P_VALS = ['2','3','4','5','6','7','8','9','10','J','Q','K','A']; let pkPhase, pkPot, pkHighestBet, pkPlayerCurrentBet, pkDeck, pkCommunity, pkPlayerHand, pkBotHands, pkActiveBots;
+        window.initPoker = function() { if(window.credits < 50) { alert("Kredit tidak cukup!"); return; } window.updateCredits(-50); pkPot = 200; pkHighestBet = 0; pkPlayerCurrentBet = 0; pkPhase = 0; let d=[]; for(let s of P_SUITS) for(let v of P_VALS) d.push({v,s, col: (s==='♥'||s==='♦')?'red':'black'}); pkDeck = d.sort(()=>Math.random()-0.5); pkCommunity = []; pkActiveBots = [true, true, true]; pkBotHands = [[pkDeck.pop(),pkDeck.pop()],[pkDeck.pop(),pkDeck.pop()],[pkDeck.pop(),pkDeck.pop()]]; pkPlayerHand = [pkDeck.pop(), pkDeck.pop()]; document.getElementById('pk-community').innerHTML = ''; document.getElementById('pk-player-hand').innerHTML = ''; window.renderPkCard(pkPlayerHand[0], 'pk-player-hand'); window.renderPkCard(pkPlayerHand[1], 'pk-player-hand'); document.getElementById('pk-pot').innerText = pkPot; document.getElementById('pk-next-btn').classList.add('hidden'); document.getElementById('pk-actions').classList.remove('hidden'); for(let i=0; i<3; i++) { document.getElementById(`bot-ui-${i}`).style.opacity = 1; document.getElementById(`bot-hand-${i}`).innerHTML = `<div class="card card-back" style="width:24px; height:34px;"></div><div class="card card-back" style="width:24px; height:34px;"></div>`; document.getElementById(`bot-bubble-${i}`).classList.add('hidden'); } window.pkUpdateUI("Giliran Anda."); }
+        window.renderPkCard = function(c, elId) { const el = document.createElement('div'); el.className = `card ${c.col}`; el.innerHTML = `<span class="text-[10px] absolute top-0 left-1">${c.v}</span><span class="text-xl">${c.s}</span>`; document.getElementById(elId).appendChild(el); }
+        window.getHandRank = function(hand) { if(hand.length < 5) return "High Card"; let vals = hand.map(c => P_VALS.indexOf(c.v)); let suits = hand.map(c => c.s); vals.sort((a,b)=>a-b); const counts = {}; vals.forEach(x => counts[x] = (counts[x]||0)+1); const freq = Object.values(counts).sort((a,b)=>b-a); const isFlush = Object.values(suits.reduce((a,c)=>{a[c]=(a[c]||0)+1; return a},{})).some(x=>x>=5); let uniqueVals = [...new Set(vals)]; let isStraight = false; for(let i=0; i<=uniqueVals.length-5; i++) { if(uniqueVals[i+4]-uniqueVals[i] === 4) isStraight=true; } if(isStraight && isFlush) return "Straight Flush"; if(freq[0]===4) return "Four of a Kind"; if(freq[0]===3 && freq[1]>=2) return "Full House"; if(isFlush) return "Flush"; if(isStraight) return "Straight"; if(freq[0]===3) return "Three of a Kind"; if(freq[0]===2 && freq[1]===2) return "Two Pair"; if(freq[0]===2) return "One Pair"; return "High Card"; }
+        window.pkUpdateUI = function(msg) { document.getElementById('pk-status-msg').innerText = msg; document.getElementById('pk-pot').innerText = pkPot; const diff = pkHighestBet - pkPlayerCurrentBet; document.getElementById('btn-check').classList.toggle('hidden', diff > 0); document.getElementById('btn-call').classList.toggle('hidden', diff <= 0); if(diff > 0) document.getElementById('btn-call').innerText = `CALL ${diff}`; const currentHand = [...pkPlayerHand, ...pkCommunity]; document.getElementById('pk-hand-eval').innerText = window.getHandRank(currentHand); document.getElementById('pk-actions').classList.remove('pointer-events-none', 'opacity-50'); }
+        window.pkPlayerAction = function(act) { window.playSfx('click'); const diff = pkHighestBet - pkPlayerCurrentBet; const raiseAmt = 50; if(act === 'fold') { window.pkUpdateUI("Anda Fold. Kalah."); window.pkEnd(false); return; } if(act === 'raise') { if(window.credits < (diff + raiseAmt)) { alert("Kredit tidak cukup!"); return; } window.updateCredits(-(diff + raiseAmt)); pkPot+=(diff + raiseAmt); pkPlayerCurrentBet+=(diff + raiseAmt); pkHighestBet = pkPlayerCurrentBet; } if(act === 'call') { if(window.credits < diff) { alert("Kredit tidak cukup!"); return; } window.updateCredits(-diff); pkPot+=diff; pkPlayerCurrentBet+=diff; } window.runBotTurns(); }
+        window.runBotTurns = async function() { document.getElementById('pk-actions').classList.add('pointer-events-none', 'opacity-50'); let botRaised = false; for(let i=0; i<3; i++) { if(!pkActiveBots[i]) continue; const bub = document.getElementById(`bot-bubble-${i}`); bub.classList.remove('hidden'); bub.innerText = "..."; await new Promise(r=>setTimeout(r,600)); let action = "Check"; if(pkHighestBet > 0) { if(Math.random() < 0.2) { action="Fold"; pkActiveBots[i]=false; document.getElementById(`bot-ui-${i}`).style.opacity=0.5; } else { action="Call"; pkPot+=pkHighestBet; } } else { if(Math.random() > 0.9) { action="Raise"; pkPot+=50; pkHighestBet=50; botRaised=true; } } bub.innerText = action; } await new Promise(r=>setTimeout(r,500)); document.querySelectorAll('[id^="bot-bubble-"]').forEach(el=>el.classList.add('hidden')); if(botRaised && pkHighestBet > pkPlayerCurrentBet) { window.pkUpdateUI("Bot Raise! Giliran Anda."); } else { window.pkNextPhase(); } }
+        window.pkNextPhase = function() { pkPhase++; window.playSfx('cardFlip'); pkHighestBet=0; pkPlayerCurrentBet=0; if(pkPhase===1) { for(let i=0;i<3;i++) pkCommunity.push(pkDeck.pop()); } else if(pkPhase<=3) pkCommunity.push(pkDeck.pop()); else { window.pkEnd(true); return; } document.getElementById('pk-community').innerHTML = pkCommunity.map(c => `<div class="card ${c.col}"><span class="text-[10px] absolute top-0 left-1">${c.v}</span><span class="text-xl">${c.s}</span></div>`).join(''); window.pkUpdateUI("Lanjut..."); }
+        window.pkEnd = function(showdown) { document.getElementById('pk-actions').classList.add('hidden'); document.getElementById('pk-next-btn').classList.remove('hidden'); if(!showdown) return; let playerRankVal = ["High Card","One Pair","Two Pair","Three of a Kind","Straight","Flush","Full House","Four of a Kind"].indexOf(window.getHandRank([...pkPlayerHand, ...pkCommunity])); let bestBotVal = -1; for(let i=0; i<3; i++) { if(pkActiveBots[i]) { document.getElementById(`bot-hand-${i}`).innerHTML = pkBotHands[i].map(c => `<div class="card ${c.col}" style="width:24px; height:34px; font-size:10px;">${c.v}${c.s}</div>`).join(''); let botRank = window.getHandRank([...pkBotHands[i], ...pkCommunity]); let val = ["High Card","One Pair","Two Pair","Three of a Kind","Straight","Flush","Full House","Four of a Kind"].indexOf(botRank); if(val > bestBotVal) bestBotVal = val; } } if(playerRankVal >= bestBotVal) { window.pkUpdateUI("MENANG! " + window.getHandRank([...pkPlayerHand, ...pkCommunity])); window.updateCredits(pkPot); window.playSfx('win'); window.checkBigWin(pkPot, 50); } else { window.pkUpdateUI("KALAH."); } }
+
+        let bjBet=50, bjDeck, bjP, bjD;
+        window.initBj = function() { document.getElementById('bj-betting').classList.remove('hidden'); document.getElementById('bj-table').classList.add('hidden'); }
+        window.bjDeal = function() { if(window.credits<bjBet) return; window.updateCredits(-bjBet); document.getElementById('bj-betting').classList.add('hidden'); document.getElementById('bj-table').classList.remove('hidden'); document.getElementById('bj-controls').classList.remove('hidden'); document.getElementById('bj-reset').classList.add('hidden'); document.getElementById('bj-msg').innerText = ""; let d=[]; for(let s of P_SUITS) for(let v of P_VALS) d.push({v,s, col:(s=='♥'||s=='♦')?'red':'black'}); bjDeck = d.sort(()=>Math.random()-0.5); bjP=[bjDeck.pop(), bjDeck.pop()]; bjD=[bjDeck.pop(), bjDeck.pop()]; window.playSfx('cardFlip'); window.bjRender(false); }
+        window.bjRender = function(show) { document.getElementById('bj-p-cards').innerHTML = bjP.map(c => `<div class="card ${c.col} animate-bounce-in"><span class="absolute top-1 left-1 text-xs">${c.v}</span><span class="text-2xl">${c.s}</span></div>`).join(''); let pScore = 0, pA=0; bjP.forEach(c=>{if(['J','Q','K'].includes(c.v))pScore+=10;else if(c.v=='A'){pScore+=11;pA++}else pScore+=parseInt(c.v)}); while(pScore>21&&pA>0){pScore-=10;pA--} document.getElementById('bj-p-score').innerText = "Score: " + pScore; let dealerHTML = ""; if(show) { dealerHTML = bjD.map(c => `<div class="card ${c.col} animate-bounce-in"><span class="absolute top-1 left-1 text-xs">${c.v}</span><span class="text-2xl">${c.s}</span></div>`).join(''); let dScore = 0, dA=0; bjD.forEach(c=>{if(['J','Q','K'].includes(c.v))dScore+=10;else if(c.v=='A'){dScore+=11;dA++}else dScore+=parseInt(c.v)}); while(dScore>21&&dA>0){dScore-=10;dA--} document.getElementById('bj-d-score').innerText = "Score: " + dScore; } else { dealerHTML = `<div class="card ${bjD[0].col} animate-bounce-in"><span class="absolute top-1 left-1 text-xs">${bjD[0].v}</span><span class="text-2xl">${bjD[0].s}</span></div><div class="card card-back animate-bounce-in"></div>`; document.getElementById('bj-d-score').innerText = "?"; } document.getElementById('bj-d-cards').innerHTML = dealerHTML; return pScore; }
+        window.bjHit = function(){ window.playSfx('cardFlip'); bjP.push(bjDeck.pop()); if(window.bjRender(false)>21) window.bjEnd(false,"BUST!"); }
+        window.bjStand = function(){ let dScore=0, dA=0; do { dScore=0; dA=0; bjD.forEach(c=>{if(['J','Q','K'].includes(c.v))dScore+=10;else if(c.v=='A'){dScore+=11;dA++}else dScore+=parseInt(c.v)}); while(dScore>21&&dA>0){dScore-=10;dA--} if(dScore<17) bjD.push(bjDeck.pop()); } while(dScore<17); window.bjRender(true); let pScore=0, pA=0; bjP.forEach(c=>{if(['J','Q','K'].includes(c.v))pScore+=10;else if(c.v=='A'){pScore+=11;pA++}else pScore+=parseInt(c.v)}); while(pScore>21&&pA>0){pScore-=10;pA--} if(dScore>21||pScore>dScore) window.bjEnd(true,"MENANG!"); else if(pScore==dScore) window.bjEnd(null,"SERI"); else window.bjEnd(false,"KALAH"); }
+        window.bjEnd = function(w,m){ document.getElementById('bj-msg').innerText=m; document.getElementById('bj-controls').classList.add('hidden'); document.getElementById('bj-reset').classList.remove('hidden'); if(w) {window.updateCredits(bjBet*2); window.playSfx('win'); window.checkBigWin(bjBet*2, bjBet);} }
+
+        const M_SYMS = ['🍒','7️⃣','🍋','💎','🍇','🔔']; let mBet = 100; let isSpinning = false;
+        window.initMega = function() { let c = document.getElementById('mega-grid-container-main'); c.innerHTML=''; for(let i=0; i<15; i++) c.innerHTML += `<div class="bg-black border border-slate-800 h-12 flex items-center justify-center text-3xl rounded slot-cell" id="mc-${i}">${M_SYMS[Math.floor(Math.random()*M_SYMS.length)]}</div>`; }
+        window.changeMegaBet = function(v) { if(mBet+v>=50) mBet+=v; document.getElementById('mega-bet-val').innerText=mBet; }
+        window.spinMega = async function() { if(isSpinning || window.credits<mBet) return; isSpinning=true; window.updateCredits(-mBet); document.querySelectorAll('.payline-highlight').forEach(e=>e.classList.remove('payline-highlight')); for(let i=0; i<15; i++) { document.getElementById(`mc-${i}`).parentElement.classList.add('spinning'); } await new Promise(r=>setTimeout(r,1200)); let grid=[]; for(let i=0; i<15; i++) { let el = document.getElementById(`mc-${i}`); el.parentElement.classList.remove('spinning'); grid[i] = M_SYMS[Math.floor(Math.random()*M_SYMS.length)]; el.innerText = grid[i]; } if(grid[5]==grid[6] && grid[6]==grid[7]) { window.updateCredits(mBet*5); document.getElementById('mega-win-text').innerText = "WIN!"; [5,6,7].forEach(i=>document.getElementById(`mc-${i}`).classList.add('payline-highlight')); window.playSfx('win'); window.checkBigWin(mBet*5, mBet); } else document.getElementById('mega-win-text').innerText = ""; isSpinning=false; }
+
+        const MJ_SYMS = ['🀇','🀈','🀉','🀄','🀅','發', 'WILD']; let mjBet = 100;
+        window.initMahjong = function() { const grid = document.getElementById('mahjong-grid-container'); grid.innerHTML = ''; for(let i=0; i<20; i++) grid.innerHTML += `<div class="mahjong-tile h-16 flex items-center justify-center" id="mj-cell-${i}">${MJ_SYMS[Math.floor(Math.random()*(MJ_SYMS.length-1))]}</div>`; }
+        window.changeMahjongBet = function(v) { if(mjBet+v>=50) mjBet+=v; document.getElementById('mahjong-bet-val').innerText=mjBet; }
+        window.spinMahjong = async function() { if(window.credits < mjBet) return; window.updateCredits(-mjBet); let cells = document.querySelectorAll('[id^="mj-cell-"]'); cells.forEach(el => el.classList.add('spinning')); await new Promise(r=>setTimeout(r,800)); cells.forEach(el => { el.classList.remove('spinning'); el.innerText = MJ_SYMS[Math.floor(Math.random()*MJ_SYMS.length)]; }); if(Math.random()<0.3) { let w = mjBet*3; window.updateCredits(w); document.getElementById('mahjong-win-text').innerText=`+${w}`; window.playSfx('win'); window.checkBigWin(w, mjBet); } else {document.getElementById('mahjong-win-text').innerText='';} }
+
+        const D_SYMS = ['💎','👑','🍷','💍','⚡']; let dBet = 200;
+        window.initDimka = function() { document.getElementById('dimka-grid-container').innerHTML = ''; for(let i=0; i<30; i++) document.getElementById('dimka-grid-container').innerHTML += `<div class="bg-purple-900/40 border border-purple-500/30 h-10 flex items-center justify-center text-2xl rounded slot-cell">${D_SYMS[Math.floor(Math.random()*D_SYMS.length)]}</div>`; }
+        window.changeDimkaBet = function(v) { if(dBet+v>=100) dBet+=v; document.getElementById('dimka-bet-val').innerText=dBet; }
+        window.spinDimka = async function() { if(window.credits<dBet) return; window.updateCredits(-dBet); document.querySelectorAll('#dimka-grid-container div').forEach(el => el.innerText = D_SYMS[Math.floor(Math.random()*D_SYMS.length)]); if(Math.random()<0.2) { let w=dBet*5; window.updateCredits(w); document.getElementById('dimka-win-display').innerText=w; window.playSfx('win'); window.checkBigWin(w, dBet); } else {document.getElementById('dimka-win-display').innerText='0';} }
+
+        window.updateHud();
+    </script>
+</body>
+</html>
