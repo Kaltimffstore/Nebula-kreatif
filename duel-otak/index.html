@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Duel Otak v14.14: Tampilan Baru</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --vh: 1vh; }
+        body {
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation;
+            background-color: #111827;
+            color: white;
+            overflow: hidden;
+            position: fixed;
+            width: 100vw;
+            height: calc(var(--vh, 1vh) * 100);
+        }
+        #game-board { display: flex; flex-direction: column; width: 100%; height: 100%; }
+        .player-group { display: flex; flex: 1; gap: 4px; }
+        .player-area { 
+            flex: 1; 
+            transition: all 0.5s ease-in-out; 
+            border: 2px solid transparent; 
+            min-height: 150px; 
+            position: relative;
+        }
+        #middle-area { flex-shrink: 0; position: relative; }
+
+        .active-player-glow { box-shadow: 0 0 20px 8px var(--glow-color, rgba(255,255,255,0.4)); border-color: var(--glow-color, #fff); z-index: 20; }
+        .targeting-glow {
+            box-shadow: 0 0 20px 8px rgba(239, 68, 68, 0.7) !important;
+            border-color: #ef4444 !important;
+            cursor: pointer;
+            animation: pulse-red 1.5s infinite;
+            z-index: 50 !important;
+        }
+        @keyframes pulse-red { 50% { box-shadow: 0 0 25px 12px rgba(239, 68, 68, 0.9) !important; } }
+        
+        .card { transition: all 0.3s ease; }
+        .card.disabled { opacity: 0.6; cursor: not-allowed; }
+        .action-card { min-height: 100px; }
+        .question-card { width: 80px; height: 120px; }
+
+        .btn-action { transition: all 0.2s ease-in-out; }
+        .btn-action:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .btn-action:disabled { background-color: #4b5563; cursor: not-allowed; }
+        
+        .energy-crystal { width: 14px; height: 14px; background-color: #60a5fa; border-radius: 50%; display: inline-block; margin: 0 2px; box-shadow: 0 0 8px #60a5fa; transition: all 0.3s ease; }
+        .energy-crystal.spent { background-color: #374151; box-shadow: none; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        
+        .category-badge {
+            position: absolute; top: -10px; left: 50%; transform: translateX(-50%); padding: 2px 8px;
+            border-radius: 9999px; font-size: 10px; font-weight: bold; text-transform: uppercase; color: white; white-space: nowrap;
+        }
+        .bg-cat-pengetahuanumum { background-color: #3b82f6; } .bg-cat-sains { background-color: #10b981; } .bg-cat-tekateki { background-color: #8b5cf6; } .bg-cat-sejarah { background-color: #f97316; } .bg-cat-geografi { background-color: #14b8a6; } .bg-cat-senibudaya { background-color: #ec4899; } .bg-cat-olahraga { background-color: #eab308; }
+
+        #turn-timer { transition: color 0.5s, transform 0.5s; font-weight: bold; }
+        #turn-timer.low-time { color: #f87171; transform: scale(1.1); animation: pulse-timer 1s infinite; }
+        @keyframes pulse-timer { 50% { transform: scale(1.15); } }
+
+        .shield-active-icon { position: absolute; top: 4px; left: 4px; width: 24px; height: 24px; color: #60a5fa; animation: pulse-blue 2s infinite; }
+        .energy-drain-icon { position: absolute; top: 4px; left: 32px; width: 24px; height: 24px; color: #ef4444; animation: pulse-red-icon 2s infinite; }
+        @keyframes pulse-blue { 50% { filter: drop-shadow(0 0 5px #60a5fa); } }
+        @keyframes pulse-red-icon { 50% { filter: drop-shadow(0 0 5px #ef4444); } }
+        
+        input[type=range] { -webkit-appearance: none; background: transparent; cursor: pointer; width: 100%; }
+        input[type=range]::-webkit-slider-runnable-track { background: #374151; height: 0.5rem; border-radius: 1rem; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; margin-top: -4px; background-color: #3b82f6; height: 1.25rem; width: 1.25rem; border-radius: 50%; }
+        input[type=range]:focus::-webkit-slider-thumb { outline: 2px solid #60a5fa; outline-offset: 0.125rem; }
+
+        /* Background Icons Animation */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        .bg-icon {
+            position: absolute;
+            color: #374151; /* Warna ikon yang soft */
+            opacity: 0.5;
+            animation: float 6s ease-in-out infinite;
+            pointer-events: none; /* Agar tidak bisa diklik */
+        }
+    </style>
+</head>
+<body>
+
+    <div id="start-screen" class="relative w-full h-full flex items-center justify-center p-4 animate-fade-in overflow-hidden">
+        <!-- Background Icons -->
+        <div id="background-icons" class="absolute inset-0 z-0">
+            <svg class="bg-icon w-20 h-20 top-4 left-4 rotate-12" style="animation-delay: -1s;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>
+            <svg class="bg-icon w-24 h-24 top-1/2 right-8 -rotate-12" style="animation-delay: -3s;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>
+            <svg class="bg-icon w-16 h-16 bottom-8 left-16" style="animation-delay: -2s;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.71.71a5.4 5.4 0 0 0 0 7.65l.71.71a5.4 5.4 0 0 0 7.65 0l.71-.71a5.4 5.4 0 0 0 0-7.65l-.71-.71z"></path><path d="m12.7 21.44 7.62-7.62"></path><path d="m11.29 2.56 7.62 7.62"></path><path d="m5.23 8.56 7.62 7.62"></path><path d="m2.56 12.71 7.62-7.62"></path></svg>
+            <svg class="bg-icon w-28 h-28 bottom-4 right-1/4 rotate-45" style="animation-delay: -4s;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+        </div>
+
+        <div class="w-full max-w-md mx-auto text-center z-10">
+            <h1 class="text-4xl font-bold mb-2">Duel Otak</h1>
+            <p class="text-lg text-gray-400 mb-8">v14.14: Tampilan Baru & Changelog</p>
+            <div class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl space-y-6">
+                <div>
+                    <h2 class="text-xl font-semibold mb-3">Jumlah Pemain</h2>
+                    <div id="player-count-selection" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <button class="btn-action bg-blue-600 hover:bg-blue-700 font-bold py-3 px-4 rounded-lg text-lg" data-count="2">2 Pemain</button>
+                        <button class="btn-action bg-green-600 hover:bg-green-700 font-bold py-3 px-4 rounded-lg text-lg" data-count="3">3 Pemain</button>
+                        <button class="btn-action bg-rose-600 hover:bg-rose-700 font-bold py-3 px-4 rounded-lg text-lg" data-count="4">4 Pemain</button>
+                    </div>
+                </div>
+                <div>
+                    <label for="winning-score-slider" class="text-xl font-semibold mb-3 block">Skor Kemenangan: <span id="winning-score-value" class="text-blue-400 font-bold">10</span></label>
+                    <input type="range" id="winning-score-slider" min="5" max="20" value="10" class="w-full">
+                </div>
+                 <div>
+                    <label for="turn-duration-slider" class="text-xl font-semibold mb-3 block">Waktu Giliran: <span id="turn-duration-value" class="text-blue-400 font-bold">60</span>s</label>
+                    <input type="range" id="turn-duration-slider" min="30" max="120" value="60" step="15" class="w-full">
+                </div>
+                <button id="start-game-btn" class="btn-action w-full bg-indigo-600 hover:bg-indigo-700 font-bold py-4 rounded-lg text-xl mt-4">Mulai Game</button>
+            </div>
+        </div>
+        <button id="about-btn" class="absolute bottom-4 right-4 bg-gray-700 hover:bg-gray-600 w-12 h-12 rounded-full flex items-center justify-center shadow-lg z-10">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        </button>
+    </div>
+    
+    <button id="pause-btn" class="hidden absolute top-2 left-2 z-[60] p-2 bg-gray-700 rounded-full cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+    </button>
+    
+    <div id="game-board" class="hidden p-1"></div>
+    
+    <!-- MODALS -->
+    <div id="answer-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 animate-fade-in">
+        <div class="bg-gray-800 rounded-2xl p-6 w-full max-w-md text-center shadow-2xl">
+            <h3 class="text-lg font-semibold text-gray-300 mb-4" id="modal-question">Pertanyaan akan muncul di sini...</h3>
+            <input type="text" id="answer-input" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 text-center text-white text-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="Ketik jawabanmu...">
+            <div class="flex justify-center gap-4 mt-6">
+                <button id="cancel-answer-btn" class="btn-action bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg">Batal</button>
+                <button id="submit-answer-btn" class="btn-action bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg">Jawab</button>
+            </div>
+        </div>
+    </div>
+    <div id="game-over-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 animate-fade-in">
+        <div class="bg-gray-800 rounded-2xl p-8 w-full max-w-md text-center shadow-2xl">
+            <h2 class="text-4xl font-bold text-yellow-400 mb-4">Permainan Selesai!</h2>
+            <p class="text-2xl text-white mb-2" id="winner-text">Pemain X Menang!</p>
+            <div id="final-scoreboard" class="my-6 space-y-2 text-left"></div>
+            <div class="flex justify-center gap-4 mt-8">
+                <button id="back-to-menu-btn" class="btn-action bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg text-lg">Ke Menu Utama</button>
+                <button id="restart-game-btn" class="btn-action bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg">Main Lagi</button>
+            </div>
+        </div>
+    </div>
+    <div id="pause-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[70] animate-fade-in">
+        <div class="bg-gray-800 rounded-2xl p-8 w-full max-w-xs text-center shadow-2xl space-y-4">
+            <h2 class="text-3xl font-bold">Jeda</h2>
+            <button id="resume-btn" class="btn-action w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg text-lg">Lanjutkan</button>
+            <div id="mute-button-container" class="flex justify-center p-2 bg-gray-700 rounded-lg cursor-pointer">
+                <span class="mr-3">Suara</span>
+                <svg id="icon-sound-on" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                <svg id="icon-sound-off" class="hidden" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="1" x2="1" y2="23"></line><line x1="17" y1="9" x2="17" y2="9"></line></svg>
+            </div>
+            <button id="exit-to-menu-btn" class="btn-action w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 rounded-lg text-lg">Keluar ke Menu</button>
+        </div>
+    </div>
+    <div id="targeting-overlay" class="hidden fixed inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center z-40 space-y-4 p-4 animate-fade-in">
+        <h2 class="text-3xl font-bold text-red-500">Pilih Target!</h2>
+        <p class="text-gray-300">Klik area pemain untuk dijadikan target.</p>
+        <button id="cancel-targeting-btn" class="btn-action bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg mt-4">Batal</button>
+    </div>
+    <div id="inspiration-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 animate-fade-in">
+         <div class="bg-gray-800 rounded-2xl p-6 w-full max-w-lg text-center shadow-2xl">
+            <h3 class="text-2xl font-bold mb-6">Inspirasi Mendadak</h3>
+            <p class="text-gray-300 mb-6">Pilih 1 dari 3 kartu berikut untuk diambil:</p>
+            <div id="inspiration-card-options" class="grid grid-cols-3 gap-4"></div>
+        </div>
+    </div>
+    <div id="about-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 animate-fade-in">
+         <div class="bg-gray-800 rounded-2xl p-6 w-full max-w-md text-center shadow-2xl overflow-y-auto max-h-[90vh]">
+            <h3 class="text-2xl font-bold mb-4">Tentang Duel Otak</h3>
+            <p class="text-gray-300 mb-4 text-left">Permainan kartu strategi dan pengetahuan. Uji wawasanmu dan kalahkan lawan-lawanmu!</p>
+            
+            <!-- Changelog Section -->
+            <div class="mt-6 border-t border-gray-700 pt-4 text-left">
+                <h4 class="font-semibold text-white mb-2">Catatan Perubahan (Changelog)</h4>
+                <ul class="text-sm text-gray-400 list-disc pl-5 space-y-1">
+                    <li><span class="font-semibold text-gray-300">v14.14:</span> Tampilan menu utama baru & penambahan changelog.</li>
+                    <li><span class="font-semibold text-gray-300">v14.13:</span> Perbaikan dan penyempurnaan efek suara kemenangan.</li>
+                    <li><span class="font-semibold text-gray-300">v14.12:</span> Penambahan menu pengaturan (skor & waktu) dan menu jeda.</li>
+                    <li><span class="font-semibold text-gray-300">v14.11:</span> Perbaikan bug krusial pada kartu "Kuras Energi".</li>
+                    <li><span class="font-semibold text-gray-300">v14.10:</span> Penambahan kartu aksi baru: "Kuras Energi" & "Semangat Juang".</li>
+                    <li><span class="font-semibold text-gray-300">v14.8:</span> Implementasi sistem tumpukan kartu terbatas & aksi "Ambil Kartu".</li>
+                </ul>
+            </div>
+
+            <div class="mt-6 border-t border-gray-700 pt-4 text-left">
+                <h4 class="font-semibold text-sm text-white mb-2">Informasi Hak Cipta</h4>
+                <p class="text-xs text-gray-400 leading-relaxed">Game "Duel Otak" ini, termasuk seluruh elemen di dalamnya seperti kode program, desain visual, musik, dan konsep permainan, adalah karya cipta yang dilindungi oleh Undang-Undang Hak Cipta No. 28 Tahun 2014. Dilarang menggandakan, memodifikasi, atau mendistribusikan ulang game ini dalam bentuk apa pun tanpa izin tertulis dari pencipta.</p>
+            </div>
+            
+            <p class="text-gray-400 mt-6 mb-1">Dibuat oleh:</p>
+            <p class="text-lg font-semibold text-white mb-6">Deny Kusrianto</p>
+            <div class="flex justify-center gap-4 mb-6">
+                <a href="https://www.instagram.com/kaltimff_store?igsh=bWlzeHpiZ281djN4" target="_blank" class="btn-action bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded-lg inline-flex items-center"><svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24"><path d="M7.8,2H16.2C19.4,2 22,4.6 22,7.8V16.2A5.8,5.8 0 0,1 16.2,22H7.8C4.6,22 2,19.4 2,16.2V7.8A5.8,5.8 0 0,1 7.8,2M7.6,4A3.6,3.6 0 0,0 4,7.6V16.4C4,18.39 5.61,20 7.6,20H16.4A3.6,3.6 0 0,0 20,16.4V7.6C20,5.61 18.39,4 16.4,4H7.6M17.25,5.5A1.25,1.25 0 0,1 18.5,6.75A1.25,1.25 0 0,1 17.25,8A1.25,1.25 0 0,1 16,6.75A1.25,1.25 0 0,1 17.25,5.5M12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9Z" /></svg>Instagram</a>
+                <a href="https://wa.me/message/JNJFBTFD773MB1" target="_blank" class="btn-action bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg inline-flex items-center"><svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.31 20.62C8.75 21.41 10.37 21.82 12.04 21.82C17.5 21.82 21.95 17.37 21.95 11.91C21.95 6.45 17.5 2 12.04 2M12.04 3.67C16.56 3.67 20.28 7.39 20.28 11.91C20.28 16.43 16.56 20.15 12.04 20.15C10.46 20.15 8.96 19.74 7.64 19L7.1 18.68L4.31 19.38L5.02 16.68L4.67 16.14C3.89 14.81 3.46 13.31 3.46 11.91C3.46 7.39 7.18 3.67 12.04 3.67M9.13 7.5C8.86 7.5 8.54 7.59 8.28 8.06C8.02 8.53 7.37 9.19 7.37 10.4C7.37 11.61 8.31 12.75 8.47 12.94C8.63 13.13 10.03 15.35 12.21 16.22C13.96 16.92 14.33 16.76 14.78 16.71C15.23 16.66 16.19 16.13 16.38 15.5C16.57 14.87 16.57 14.34 16.52 14.24C16.47 14.14 16.28 14.09 16.02 13.95C15.76 13.81 14.61 13.25 14.39 13.16C14.17 13.07 14.02 13.02 13.88 13.26C13.74 13.5 13.26 14.02 13.12 14.16C12.98 14.31 12.84 14.36 12.58 14.22C12.05 13.95 11.23 13.5 10.23 12.59C9.44 11.88 8.91 11.03 8.77 10.77C8.63 10.51 8.74 10.37 8.88 10.24C8.95 10.17 9.07 10.04 9.21 9.89C9.35 9.75 9.4 9.66 9.5 9.52C9.6 9.37 9.55 9.23 9.5 9.13C9.45 9.03 9.03 8 8.84 7.59C8.65 7.18 8.47 7.23 8.28 7.23" /></svg>WhatsApp</a>
+            </div>
+            
+            <button id="about-close-btn" class="btn-action bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg mt-6">Tutup</button>
+        </div>
+    </div>
+
+    <script>
+    // --- BANK SOAL & KARTU (v14.14) ---
+    const questionBank = { "Pengetahuan Umum": [ { q: "Apa ibukota Indonesia?", a: ["jakarta"] }, { q: "Siapa presiden pertama Indonesia?", a: ["soekarno", "sukarno"] }, { q: "Berapa jumlah provinsi di Indonesia saat ini (2024)?", a: ["38"] }, { q: "Apa nama mata uang Jepang?", a: ["yen"] }, { q: "Siapakah penemu bola lampu?", a: ["thomas edison", "edison"] }, { q: "Apa kepanjangan dari PBB?", a: ["perserikatan bangsa bangsa"] }, { q: "Di negara manakah Menara Eiffel berada?", a: ["prancis", "paris"] }, { q: "Apa warna bendera negara Swiss?", a: ["merah putih"] }, { q: "Siapa penulis novel 'Laskar Pelangi'?", a: ["andrea hirata"] }, { q: "Hari Pendidikan Nasional diperingati setiap tanggal?", a: ["2 mei"] } ], "Sains": [ { q: "Apa rumus kimia untuk air?", a: ["h2o"] }, { q: "Planet terdekat dari Matahari?", a: ["merkurius"] }, { q: "Proses tumbuhan membuat makanan disebut?", a: ["fotosintesis"] }, { q: "Gas apa yang paling banyak di atmosfer Bumi?", a: ["nitrogen"] }, { q: "Berapa jumlah kaki yang dimiliki laba-laba?", a: ["8", "delapan"] }, { q: "Apa nama gaya yang menarik benda ke pusat Bumi?", a: ["gravitasi"] }, { q: "Hewan darat tercepat di dunia?", a: ["cheetah"] }, { q: "Bagian dari sel yang berfungsi sebagai pusat kendali?", a: ["nukleus", "inti sel"] }, { q: "Zat yang memberi warna hijau pada daun?", a: ["klorofil"] }, { q: "Mamalia terbesar di dunia?", a: ["paus biru"] } ], "Teka-Teki": [ { q: "Aku punya kota, tapi tak punya rumah. Aku punya hutan, tapi tak punya pohon. Siapakah aku?", a: ["peta"] }, { q: "Semakin banyak kamu ambil, semakin banyak yang tertinggal. Apa itu?", a: ["jejak kaki", "jejak"] }, { q: "Jika kamu punya aku, kamu ingin membagikanku. Jika kamu membagikanku, kamu tak lagi memilikiku. Apa aku?", a: ["rahasia"] }, { q: "Apa yang punya leher tanpa kepala, dan punya punggung tanpa badan?", a: ["botol"] }, { q: "Aku selalu datang tapi tidak pernah tiba. Siapakah aku?", a: ["hari esok", "besok"] }, { q: "Apa yang basah saat mengeringkan?", a: ["handuk"] }, { q: "Apa yang bisa patah tanpa disentuh?", a: ["janji"] }, { q: "Apa yang naik tapi tidak pernah turun?", a: ["umur", "usia"] }, { q: "Milikmu, tapi lebih sering digunakan orang lain. Apa itu?", a: ["nama"] }, { q: "Aku punya banyak gigi tapi tidak bisa makan. Siapakah aku?", a: ["sisir"] } ], "Sejarah": [ { q: "Di mana proklamasi kemerdekaan Indonesia dibacakan?", a: ["pegangsaan timur"] }, { q: "Perang Dunia II berakhir pada tahun?", a: ["1945"] }, { q: "Siapa yang menjahit bendera pusaka Merah Putih?", a: ["fatmawati"] }, { q: "Siapakah Patih dari Kerajaan Majapahit yang terkenal dengan Sumpah Palapa?", a: ["gajah mada"] }, { q: "Kapan Sumpah Pemuda diikrarkan?", a: ["28 oktober 1928"] }, { q: "Siapa yang disebut Bapak Proklamator Indonesia?", a: ["soekarno hatta", "sukarno hatta"] }, { q: "Tembok Besar China dibangun untuk menahan serangan dari bangsa?", a: ["mongol"] }, { q: "Siapa pemimpin perjuangan anti-apartheid di Afrika Selatan?", a: ["nelson mandela"] }, { q: "Candi Buddha terbesar di dunia yang ada di Indonesia?", a: ["borobudur"] }, { q: "Peristiwa apa yang memicu Perang Dunia I?", a: ["pembunuhan franz ferdinand"] } ], "Geografi": [ { q: "Sungai terpanjang di dunia?", a: ["nil"] }, { q: "Gunung tertinggi di dunia?", a: ["everest"] }, { q: "Benua terbesar di dunia?", a: ["asia"] }, { q: "Samudra terluas di dunia?", a: ["pasifik"] }, { q: "Negara dengan populasi terbanyak di dunia (2024)?", a: ["india"] }, { q: "Gurun pasir terbesar di dunia?", a: ["sahara"] }, { q: "Danau terbesar di Indonesia?", a: ["toba"] }, { q: "Selat yang memisahkan Pulau Jawa dan Sumatra?", a: ["sunda"] }, { q: "Garis khayal yang membagi bumi menjadi belahan utara dan selatan?", a: ["khatulistiwa", "ekuator"] }, { q: "Ibukota Australia?", a: ["canberra"] } ], "Seni & Budaya": [ { q: "Siapa pelukis 'Mona Lisa'?", a: ["leonardo da vinci", "da vinci"] }, { q: "Alat musik petik dari Jawa Barat?", a: ["kecapi"] }, { q: "Tari Kecak berasal dari daerah?", a: ["bali"] }, { q: "Siapakah pencipta lagu 'Indonesia Raya'?", a: ["wr supratman", "wage rudolf supratman"] }, { q: "Wayang adalah kesenian tradisional dari negara?", a: ["indonesia"] }, { q: "Alat musik pukul yang merupakan bagian dari gamelan?", a: ["gong", "saron", "bonang"] }, { q: "Siapakah pelukis Indonesia yang dijuluki 'Maestro'?", a: ["affandi"] }, { q: "Rumah adat dari Sumatra Barat?", a: ["gadang"] }, { q: "Kain tradisional Indonesia yang diakui UNESCO?", a: ["batik"] }, { q: "Grup lawak legendaris Indonesia yang terdiri dari Dono, Kasino, Indro?", a: ["warkop dki"] } ], "Olahraga": [ { q: "Berapa jumlah pemain dalam satu tim sepak bola?", a: ["11", "sebelas"] }, { q: "Induk organisasi bulu tangkis dunia?", a: ["bwf"] }, { q: "Olimpiade modern pertama diadakan di kota?", a: ["athena"] }, { q: "Berapa tahun sekali Piala Dunia FIFA diadakan?", a: ["4", "empat"] }, { q: "Siapakah pebulu tangkis Indonesia yang dijuluki 'King of Smash'?", a: ["liem swie king"] }, { q: "Dari negara manakah olahraga Judo berasal?", a: ["jepang"] }, { q: "Berapa jumlah ring dalam permainan bola basket?", a: ["2", "dua"] }, { q: "Istilah 'hat-trick' dalam sepak bola berarti?", a: ["tiga gol"] }, { q: "Siapa pembalap Formula 1 dengan gelar juara dunia terbanyak?", a: ["lewis hamilton", "michael schumacher"] }, { q: "Event olahraga terbesar di Asia?", a: ["asian games"] } ] };
+    const actionCards = [ { name: "Curi Poin", desc: "Curi 1 poin dari pemain pilihanmu.", effect: 'stealPoint', cost: 1, target: true }, { name: "Ganti Soal", desc: "Ganti semua kartu soal di tengah.", effect: 'changeQuestion', cost: 1, target: false }, { name: "Perisai", desc: "Lindungi skormu dari 'Curi Poin' sampai giliranmu berikutnya.", effect: 'shield', cost: 1, target: false }, { name: "Pusaran Takdir", desc: "Semua pemain membuang seluruh kartu dan mengambil 3 kartu baru.", effect: 'whirlwind', cost: 2, target: false }, { name: "Pajak Poin", desc: "Setiap lawan dengan skor lebih tinggi darimu kehilangan 1 poin.", effect: 'pointTax', cost: 2, target: false }, { name: "Sabotase Tangan", desc: "Buang 1 kartu acak dari tangan lawan.", effect: 'discardCard', cost: 1, target: true }, { name: "Inspirasi Mendadak", desc: "Lihat 3 kartu teratas, pilih 1 untuk diambil.", effect: 'inspiration', cost: 1, target: false }, { name: "Kuras Energi", desc: "Pilih lawan. Habiskan semua sisa energinya di giliran ini.", effect: 'drainEnergy', cost: 1, target: true}, { name: "Semangat Juang", desc: "Jika skormu paling rendah, dapatkan 1 Poin.", effect: 'fightingSpirit', cost: 2, target: false} ];
+    const ALL_CATEGORIES = Object.keys(questionBank);
+
+    // --- DOM Elements ---
+    const startScreen = document.getElementById('start-screen'), gameBoard = document.getElementById('game-board'), pauseBtn = document.getElementById('pause-btn'), answerModal = document.getElementById('answer-modal'), gameOverModal = document.getElementById('game-over-modal'), targetingOverlay = document.getElementById('targeting-overlay'), inspirationModal = document.getElementById('inspiration-modal'), aboutModal = document.getElementById('about-modal'), pauseModal = document.getElementById('pause-modal');
+
+    // --- Global State ---
+    let numPlayers, gameActive, currentPlayer, isTargeting = false, targetingCallback = null, currentlyAnsweringIndex = -1, turnTimerInterval, isMuted = false;
+    let scores = [], playerHands = [], playerEnergy = [], playerShields = [], playerEnergyDrained = [];
+    let questionsAtRoundStart = [];
+    let actionDeck = [], discardPile = [], categoryDecks, activeQuestions = [];
+    let winningScore = 10, turnDuration = 60, pausedTimeLeft = 0;
+    
+    const MAX_ENERGY = 3, MAX_HAND_SIZE = 5;
+    const PLAYER_CONFIG = [ { color: 'blue', glow: 'rgba(59, 130, 246, 0.6)' }, { color: 'rose', glow: 'rgba(244, 114, 182, 0.6)' }, { color: 'green', glow: 'rgba(16, 185, 129, 0.6)' }, { color: 'yellow', glow: 'rgba(234, 179, 8, 0.6)' }];
+    
+    let audioCtx, musicGain, sfxGain; const notes = [220.00, 261.63, 329.63, 392.00]; let noteIndex = 0; const MUSIC_VOLUME = 0.18; 
+    function initAudio() { if (audioCtx) return; audioCtx = new (window.AudioContext || window.webkitAudioContext)(); sfxGain = audioCtx.createGain(); sfxGain.gain.value = 0.3; sfxGain.connect(audioCtx.destination); musicGain = audioCtx.createGain(); musicGain.gain.value = 0; musicGain.connect(audioCtx.destination); } 
+    function startBackgroundMusic() { if (!audioCtx) initAudio(); if (musicGain.gain.value > 0) return; musicGain.gain.linearRampToValueAtTime(MUSIC_VOLUME, audioCtx.currentTime + 2); const o = audioCtx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(notes[0] / 2, audioCtx.currentTime); o.connect(musicGain); o.start(); setInterval(() => { if (isMuted) return; const ao = audioCtx.createOscillator(), ag = audioCtx.createGain(); ao.connect(ag); ag.connect(musicGain); ao.type = 'triangle'; ag.gain.setValueAtTime(0, audioCtx.currentTime); ag.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.1); ag.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1.5); ao.frequency.setValueAtTime(notes[noteIndex++ % notes.length], audioCtx.currentTime); ao.start(); ao.stop(audioCtx.currentTime + 1.5); }, 750); } 
+    function toggleMute() { isMuted = !isMuted; document.getElementById('icon-sound-on').classList.toggle('hidden', isMuted); document.getElementById('icon-sound-off').classList.toggle('hidden', !isMuted); let targetGain = isMuted ? 0 : MUSIC_VOLUME; musicGain.gain.cancelScheduledValues(audioCtx.currentTime); musicGain.gain.setValueAtTime(musicGain.gain.value, audioCtx.currentTime); musicGain.gain.linearRampToValueAtTime(targetGain, audioCtx.currentTime + 0.5); } 
+    
+    function playSound(type) { 
+        if (isMuted || !audioCtx) return;
+        const now = audioCtx.currentTime;
+        if (type === 'win') {
+            musicGain.gain.cancelScheduledValues(now);
+            musicGain.gain.setValueAtTime(musicGain.gain.value, now);
+            musicGain.gain.linearRampToValueAtTime(0.01, now + 0.5);
+            const fanfareNotes = [ { freq: 523.25, time: 0 }, { freq: 659.25, time: 0.2 }, { freq: 783.99, time: 0.4 }, { freq: 1046.50, time: 0.7 } ];
+            fanfareNotes.forEach(note => {
+                const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+                o.connect(g); g.connect(sfxGain); o.type = 'sine';
+                o.frequency.setValueAtTime(note.freq, now + note.time);
+                g.gain.setValueAtTime(0, now + note.time);
+                g.gain.linearRampToValueAtTime(1, now + note.time + 0.01);
+                g.gain.exponentialRampToValueAtTime(0.0001, now + note.time + 0.5);
+                o.start(now + note.time); o.stop(now + note.time + 0.5);
+            });
+            musicGain.gain.linearRampToValueAtTime(MUSIC_VOLUME, now + 4.0);
+        } else {
+            const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+            o.connect(g); g.connect(sfxGain);
+            g.gain.setValueAtTime(0, now);
+            g.gain.linearRampToValueAtTime(1, now + 0.01);
+            if (type === 'correct') { o.type = 'sine'; o.frequency.setValueAtTime(600, now); o.frequency.exponentialRampToValueAtTime(800, now + 0.1); } 
+            else if (type === 'incorrect') { o.type = 'square'; o.frequency.setValueAtTime(200, now); o.frequency.exponentialRampToValueAtTime(100, now + 0.1); } 
+            else if (type === 'playCard' || type === 'drawCard') { o.type = 'triangle'; o.frequency.setValueAtTime(440, now); }
+            g.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+            o.start(now); o.stop(now + 0.5);
+        }
+    }
+    
+    function setVh() { let vh = window.innerHeight * 0.01; document.documentElement.style.setProperty('--vh', `${vh}px`); }
+    window.addEventListener('resize', setVh); window.addEventListener('load', setVh);
+
+    function createPlayerHTML(playerIndex) { const config = PLAYER_CONFIG[playerIndex]; const div = document.createElement('div'); div.id = `player-area-${playerIndex}`; div.className = `player-area p-2 bg-gray-800/80 rounded-2xl flex flex-col justify-between`; div.style.setProperty('--glow-color', config.glow); div.innerHTML = `<div id="player-${playerIndex}-icons" class="absolute top-1 left-1 flex space-x-1"></div><div class="flex justify-between items-start"><div><h2 class="text-base font-bold text-${config.color}-400">Pemain ${playerIndex + 1}</h2><div id="player-${playerIndex}-energy" class="flex mt-1"></div></div><div class="text-right"><p class="text-xs text-gray-400">Skor</p><p id="player-${playerIndex}-score" class="text-3xl font-bold">0</p></div></div><div id="player-${playerIndex}-cards" class="grid grid-cols-3 gap-2 mt-2"></div>`; div.onclick = () => { if (isTargeting && currentPlayer !== playerIndex) targetingCallback(playerIndex); }; return div; }
+    function shuffle(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; }
+    function initialShuffle() { actionDeck = shuffle([...actionCards, ...actionCards, ...actionCards, ...actionCards]); discardPile = []; categoryDecks = {}; ALL_CATEGORIES.forEach(cat => { categoryDecks[cat] = shuffle([...questionBank[cat]]); }); }
+
+    function startGame(playerCount, scoreToWin, timePerTurn) {
+        numPlayers = playerCount; winningScore = scoreToWin; turnDuration = timePerTurn;
+        initAudio(); startBackgroundMusic(); pauseBtn.classList.remove('hidden');
+        initialShuffle();
+        gameActive = true; currentPlayer = -1;
+        scores = Array(numPlayers).fill(0);
+        playerHands = Array(numPlayers).fill(0).map(() => []);
+        playerEnergy = Array(numPlayers).fill(MAX_ENERGY);
+        playerShields = Array(numPlayers).fill(false);
+        playerEnergyDrained = Array(numPlayers).fill(false);
+        questionsAtRoundStart = [];
+        drawNewQuestionSet();
+        for (let p = 0; p < numPlayers; p++) { for (let i = 0; i < 3; i++) drawActionCard(p); }
+        startScreen.classList.add('hidden');
+        gameBoard.innerHTML = `<div id="top-players" class="player-group"></div><div id="middle-area" class="p-2 rounded-2xl flex flex-col items-center justify-center space-y-2 my-1"><div class="flex items-center space-x-4"><div id="turn-indicator" class="text-center text-sm font-semibold p-1 rounded-lg"></div><div id="turn-timer" class="text-xl"></div></div><div id="question-field" class="flex items-center justify-center w-full gap-2"></div><div class="flex items-center justify-center w-full mt-2 gap-4"><button id="draw-card-btn" class="btn-action bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-lg text-sm">Ambil Kartu (1E)</button><button id="end-turn-btn" class="btn-action bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-5 rounded-lg text-sm">Akhiri Giliran</button></div></div><div id="bottom-players" class="player-group"></div>`;
+        gameBoard.classList.remove('hidden');
+        const topPlayersEl = document.getElementById('top-players'), bottomPlayersEl = document.getElementById('bottom-players');
+        const pEls = Array.from({ length: numPlayers }, (_, i) => createPlayerHTML(i));
+        if (numPlayers === 2) { topPlayersEl.appendChild(pEls[0]); bottomPlayersEl.appendChild(pEls[1]); }
+        else if (numPlayers === 3) { topPlayersEl.appendChild(pEls[0]); bottomPlayersEl.appendChild(pEls[1]); bottomPlayersEl.appendChild(pEls[2]); }
+        else if (numPlayers === 4) { topPlayersEl.appendChild(pEls[0]); topPlayersEl.appendChild(pEls[1]); bottomPlayersEl.appendChild(pEls[2]); bottomPlayersEl.appendChild(pEls[3]); }
+        document.getElementById('end-turn-btn').addEventListener('click', () => { if (!isTargeting && gameActive) switchTurn(); });
+        document.getElementById('draw-card-btn').addEventListener('click', handleDrawCardClick);
+        switchTurn();
+    }
+
+    function drawActionCard(playerIndex) { if (playerHands[playerIndex].length >= MAX_HAND_SIZE) return; if (actionDeck.length === 0) { if (discardPile.length === 0) return; actionDeck = shuffle([...discardPile]); discardPile = []; } playerHands[playerIndex].push(actionDeck.pop()); }
+    function drawNewQuestion() { let availableCats = ALL_CATEGORIES.filter(c => categoryDecks[c].length > 0); if (availableCats.length === 0) { ALL_CATEGORIES.forEach(cat => { categoryDecks[cat] = shuffle([...questionBank[cat]]); }); availableCats = ALL_CATEGORIES; } let cat = availableCats[Math.floor(Math.random() * availableCats.length)]; const qData = categoryDecks[cat].pop(); return { ...qData, category: cat }; }
+    function drawNewQuestionSet() { activeQuestions = [drawNewQuestion(), drawNewQuestion(), drawNewQuestion()]; }
+    
+    function updateUI() {
+        if (!gameActive) return;
+        for (let i = 0; i < numPlayers; i++) {
+            const scoreEl = document.getElementById(`player-${i}-score`); if (scoreEl) scoreEl.textContent = scores[i];
+            renderPlayerCards(i);
+            const area = document.getElementById(`player-area-${i}`);
+            if (area) { area.classList.remove('active-player-glow', 'targeting-glow'); area.style.zIndex = 'auto'; if (i === currentPlayer) area.classList.add('active-player-glow'); if (isTargeting && i !== currentPlayer) area.classList.add('targeting-glow'); }
+            const iconEl = document.getElementById(`player-${i}-icons`);
+            if (iconEl) { iconEl.innerHTML = ''; if (playerShields[i]) { iconEl.innerHTML += `<svg class="shield-active-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-3z"></path></svg>`; } if (playerEnergyDrained[i]) { iconEl.innerHTML += `<svg class="energy-drain-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2.05v2.02C16.89 4.56 20 7.9 20 12s-3.11 7.44-7 7.93v2.02c4.95-.56 8.75-4.76 8.75-9.95S17.95 2.61 13 2.05zM5 12c0-3.07 1.95-5.73 4.75-6.85V7.2c-1.73.91-2.95 2.7-3.19 4.8H9v2H6.56C6.8 16.1 8.02 17.89 9.75 18.8v2.05C6.95 19.73 5 17.07 5 14v-2z"></path></svg>`; } }
+        }
+        renderEnergy(); renderQuestionCards();
+        document.getElementById('turn-indicator').textContent = `Giliran Pemain ${currentPlayer + 1}`;
+        const activeColor = PLAYER_CONFIG[currentPlayer].color;
+        document.getElementById('turn-indicator').className = `text-center text-sm font-semibold p-1 rounded-lg transition-all duration-300 text-${activeColor}-400`;
+        const drawBtn = document.getElementById('draw-card-btn');
+        if(drawBtn) { drawBtn.disabled = playerEnergy[currentPlayer] < 1 || playerHands[currentPlayer].length >= MAX_HAND_SIZE; }
+    }
+
+    function renderEnergy() { const energyEl = document.getElementById(`player-${currentPlayer}-energy`); if(!energyEl) return; energyEl.innerHTML = ''; for (let i = 0; i < MAX_ENERGY; i++) { const c = document.createElement('div'); c.className = 'energy-crystal ' + (i >= playerEnergy[currentPlayer] ? 'spent' : ''); energyEl.appendChild(c); } }
+    function renderPlayerCards(playerIndex) { const el = document.getElementById(`player-${playerIndex}-cards`); if(!el) return; el.innerHTML = ''; const isTurn = playerIndex === currentPlayer; playerHands[playerIndex].forEach((card, index) => { const cardEl = document.createElement('div'); const canAfford = playerEnergy[playerIndex] >= card.cost; cardEl.className = `card action-card bg-gray-700 rounded-lg p-2 flex flex-col justify-between text-center ${isTurn && canAfford ? 'cursor-pointer hover:shadow-lg hover:-translate-y-1' : ''} ${(!isTurn || !canAfford) ? 'disabled' : ''}`; cardEl.innerHTML = `<h4 class="font-bold text-xs text-${PLAYER_CONFIG[playerIndex].color}-300">${card.name}</h4><p class="text-gray-400 text-[10px] leading-tight flex-grow flex items-center justify-center">${card.desc}</p><p class="font-bold text-xs text-blue-300">${card.cost} Energi</p>`; if (isTurn && canAfford) cardEl.onclick = () => handleActionCardClick(playerIndex, card, index); el.appendChild(cardEl); }); }
+    function renderQuestionCards() { const questionFieldEl = document.getElementById('question-field'); if (!questionFieldEl) return; questionFieldEl.innerHTML = ''; const canAfford = playerEnergy[currentPlayer] >= 1; activeQuestions.forEach((q, i) => { const catClass = `bg-cat-${q.category.toLowerCase().replace(/ & /g, '')}`; const cardEl = document.createElement('div'); cardEl.className = `relative card question-card bg-gray-700 rounded-xl p-2 flex items-center justify-center text-center ${canAfford ? 'cursor-pointer hover:-translate-y-1' : ''} ${!canAfford ? 'disabled' : ''}`; cardEl.innerHTML = `<div class="category-badge ${catClass}">${q.category}</div><p class="text-[10px] font-semibold">${q.q}</p>`; if (canAfford) cardEl.onclick = () => handleQuestionClick(i); questionFieldEl.appendChild(cardEl); }); }
+    
+    function startTimer(duration) {
+        const turnTimerEl = document.getElementById('turn-timer'); let timeLeft = duration;
+        turnTimerEl.textContent = timeLeft; turnTimerEl.classList.remove('low-time');
+        turnTimerInterval = setInterval(() => { timeLeft--; pausedTimeLeft = timeLeft; turnTimerEl.textContent = timeLeft; if (timeLeft <= 10) turnTimerEl.classList.add('low-time'); if (timeLeft <= 0) { clearInterval(turnTimerInterval); playSound('incorrect'); switchTurn(); } }, 1000);
+    }
+    
+    function switchTurn() {
+        if (turnTimerInterval) clearInterval(turnTimerInterval);
+        const nextPlayer = (currentPlayer + 1) % numPlayers;
+        if (nextPlayer === 0 && currentPlayer !== -1) { const currentQuestionTexts = new Set(activeQuestions.map(q => q.q)); questionsAtRoundStart.forEach((staleQuestionText) => { if (currentQuestionTexts.has(staleQuestionText)) { const indexToReplace = activeQuestions.findIndex(q => q.q === staleQuestionText); if (indexToReplace !== -1) { activeQuestions[indexToReplace] = drawNewQuestion(); } } }); }
+        currentPlayer = nextPlayer;
+        if (currentPlayer === 0) { questionsAtRoundStart = activeQuestions.map(q => q.q); }
+        if (playerShields[currentPlayer]) { playerShields[currentPlayer] = false; }
+        if (playerEnergyDrained[currentPlayer]) { playerEnergy[currentPlayer] = 0; playerEnergyDrained[currentPlayer] = false; } else { playerEnergy[currentPlayer] = MAX_ENERGY; }
+        startTimer(turnDuration); updateUI();
+    }
+    
+    function playCard(card, cardIndex, targetIndex = null) { playerEnergy[currentPlayer] -= card.cost; const [playedCard] = playerHands[currentPlayer].splice(cardIndex, 1); discardPile.push(playedCard); playSound('playCard'); applyCardEffect(card.effect, targetIndex); updateUI(); }
+    function handleActionCardClick(playerIndex, card, cardIndex) { if (!gameActive || playerIndex !== currentPlayer || playerEnergy[playerIndex] < card.cost) return; if (card.target) { isTargeting = true; targetingOverlay.classList.remove('hidden'); targetingCallback = (target) => { isTargeting = false; targetingOverlay.classList.add('hidden'); playCard(card, cardIndex, target); }; updateUI(); } else { playCard(card, cardIndex); } }
+    function handleDrawCardClick() { if (!gameActive || playerEnergy[currentPlayer] < 1 || playerHands[currentPlayer].length >= MAX_HAND_SIZE) return; playerEnergy[currentPlayer]--; drawActionCard(currentPlayer); playSound('drawCard'); updateUI(); }
+    function cancelTargeting() { isTargeting = false; targetingOverlay.classList.add('hidden'); updateUI(); }
+    
+    function applyCardEffect(effect, targetIndex) {
+        switch (effect) {
+            case 'stealPoint': if (!playerShields[targetIndex] && scores[targetIndex] > 0) { scores[targetIndex]--; scores[currentPlayer]++; } break;
+            case 'changeQuestion': drawNewQuestionSet(); break;
+            case 'shield': playerShields[currentPlayer] = true; break;
+            case 'whirlwind': for(let i=0; i<numPlayers; i++){ discardPile.push(...playerHands[i]); playerHands[i] = []; for(let j=0; j<3; j++) drawActionCard(i); }; break;
+            case 'pointTax': for(let i=0; i<numPlayers; i++){ if(i !== currentPlayer && scores[i] > scores[currentPlayer] && !playerShields[i]){ scores[i] = Math.max(0, scores[i] - 1); }}; break;
+            case 'discardCard': if (playerHands[targetIndex].length > 0) { const cardToDiscardIdx = Math.floor(Math.random() * playerHands[targetIndex].length); const [discardedCard] = playerHands[targetIndex].splice(cardToDiscardIdx, 1); discardPile.push(discardedCard); }; break;
+            case 'inspiration': let options = []; for (let i = 0; i < 3; i++) { if (actionDeck.length > 0) { options.push(actionDeck.pop()); } else if (discardPile.length > 0) { actionDeck = shuffle([...discardPile]); discardPile = []; i--; } } const optionsEl = document.getElementById('inspiration-card-options'); optionsEl.innerHTML = ''; options.forEach((card, index) => { const cardEl = document.createElement('div'); cardEl.className = `card action-card bg-gray-700 rounded-lg p-2 flex flex-col justify-between text-center cursor-pointer hover:shadow-lg hover:-translate-y-1`; cardEl.innerHTML = `<h4 class="font-bold text-xs text-${PLAYER_CONFIG[currentPlayer].color}-300">${card.name}</h4><p class="text-gray-400 text-[10px] leading-tight flex-grow flex items-center justify-center">${card.desc}</p><p class="font-bold text-xs text-blue-300">${card.cost} Energi</p>`; cardEl.onclick = () => { if (playerHands[currentPlayer].length < MAX_HAND_SIZE) playerHands[currentPlayer].push(card); else discardPile.push(card); options.splice(index, 1); discardPile.push(...options); inspirationModal.classList.add('hidden'); updateUI(); }; optionsEl.appendChild(cardEl); }); inspirationModal.classList.remove('hidden'); break;
+            case 'drainEnergy': if (targetIndex !== null) { playerEnergyDrained[targetIndex] = true; } break;
+            case 'fightingSpirit': const minScore = Math.min(...scores); if (scores[currentPlayer] === minScore) { scores[currentPlayer]++; if (scores[currentPlayer] >= winningScore) { endGame(); } } break;
+        }
+    }
+
+    function handleQuestionClick(index) { if (!gameActive || playerEnergy[currentPlayer] < 1) return; currentlyAnsweringIndex = index; document.getElementById('modal-question').textContent = activeQuestions[index].q; answerModal.classList.remove('hidden'); document.getElementById('answer-input').value = ''; document.getElementById('answer-input').focus(); }
+    
+    function processAnswer() {
+        if (currentlyAnsweringIndex === -1) return;
+        const userInput = document.getElementById('answer-input').value.trim().toLowerCase();
+        const correctAnswers = activeQuestions[currentlyAnsweringIndex].a;
+        if (userInput && correctAnswers.some(ans => userInput.includes(ans))) {
+            playSound('correct'); playerEnergy[currentPlayer]--; scores[currentPlayer]++;
+            if (scores[currentPlayer] >= winningScore) { endGame(); answerModal.classList.add('hidden'); currentlyAnsweringIndex = -1; return; }
+            activeQuestions[currentlyAnsweringIndex] = drawNewQuestion();
+        } else {
+            playSound('incorrect'); playerEnergy[currentPlayer] = 0;
+        }
+        answerModal.classList.add('hidden'); currentlyAnsweringIndex = -1; updateUI();
+    }
+    
+    function endGame() {
+        gameActive = false; if (turnTimerInterval) clearInterval(turnTimerInterval);
+        playSound('win'); 
+        document.getElementById('winner-text').textContent = `Pemain ${currentPlayer + 1} Menang!`;
+        const finalScores = scores.map((score, index) => ({ player: index + 1, score: score })).sort((a, b) => b.score - a.score);
+        const scoreboardEl = document.getElementById('final-scoreboard');
+        scoreboardEl.innerHTML = '<h3 class="text-xl font-bold text-center mb-3">Papan Skor Akhir</h3>';
+        finalScores.forEach(item => { const entry = document.createElement('div'); entry.className = 'flex justify-between items-center bg-gray-700 p-2 rounded-md'; entry.innerHTML = `<span class="font-semibold text-${PLAYER_CONFIG[item.player-1].color}-400">Pemain ${item.player}</span><span class="font-bold text-lg">${item.score} Poin</span>`; scoreboardEl.appendChild(entry); });
+        gameOverModal.classList.remove('hidden');
+    }
+    
+    function returnToMenu() {
+        if (turnTimerInterval) clearInterval(turnTimerInterval); gameActive = false;
+        gameOverModal.classList.add('hidden'); pauseModal.classList.add('hidden');
+        gameBoard.classList.add('hidden'); gameBoard.innerHTML = '';
+        pauseBtn.classList.add('hidden'); startScreen.classList.remove('hidden');
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        const playerCountButtons = document.querySelectorAll('#player-count-selection button');
+        const winningScoreSlider = document.getElementById('winning-score-slider');
+        const turnDurationSlider = document.getElementById('turn-duration-slider');
+        const winningScoreValue = document.getElementById('winning-score-value');
+        const turnDurationValue = document.getElementById('turn-duration-value');
+        let selectedPlayerCount = 0;
+        playerCountButtons.forEach(btn => { btn.addEventListener('click', () => { playerCountButtons.forEach(b => b.classList.remove('ring-2', 'ring-offset-2', 'ring-offset-gray-800', 'ring-white')); btn.classList.add('ring-2', 'ring-offset-2', 'ring-offset-gray-800', 'ring-white'); selectedPlayerCount = parseInt(btn.dataset.count); }); });
+        winningScoreSlider.addEventListener('input', (e) => winningScoreValue.textContent = e.target.value);
+        turnDurationSlider.addEventListener('input', (e) => turnDurationValue.textContent = e.target.value);
+        document.getElementById('start-game-btn').addEventListener('click', () => { if (!selectedPlayerCount) { alert("Silakan pilih jumlah pemain terlebih dahulu."); return; } const score = parseInt(winningScoreSlider.value); const time = parseInt(turnDurationSlider.value); startGame(selectedPlayerCount, score, time); });
+        document.getElementById('about-btn').addEventListener('click', () => aboutModal.classList.remove('hidden'));
+        document.getElementById('about-close-btn').addEventListener('click', () => aboutModal.classList.add('hidden'));
+        document.getElementById('submit-answer-btn').addEventListener('click', processAnswer);
+        document.getElementById('answer-input').addEventListener('keyup', (event) => { if(event.key === 'Enter') processAnswer(); });
+        document.getElementById('cancel-answer-btn').addEventListener('click', () => { answerModal.classList.add('hidden'); });
+        document.getElementById('restart-game-btn').addEventListener('click', returnToMenu);
+        document.getElementById('back-to-menu-btn').addEventListener('click', returnToMenu);
+        document.getElementById('exit-to-menu-btn').addEventListener('click', returnToMenu);
+        document.getElementById('cancel-targeting-btn').addEventListener('click', cancelTargeting);
+        pauseBtn.addEventListener('click', () => { if (gameActive) { clearInterval(turnTimerInterval); pauseModal.classList.remove('hidden'); } });
+        document.getElementById('resume-btn').addEventListener('click', () => { if (gameActive) { pauseModal.classList.add('hidden'); startTimer(pausedTimeLeft); } });
+        document.getElementById('mute-button-container').addEventListener('click', toggleMute);
+    });
+
+    </script>
+</body>
+</html>
