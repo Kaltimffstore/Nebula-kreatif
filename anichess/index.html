@@ -1,0 +1,1881 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anichess v2.2 - Mode AI</title>
+    <!-- Memuat Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Memuat Font Awesome untuk ikon bidak catur -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Memuat font Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <!-- Memuat Tone.js untuk efek suara -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            background-color: #0f172a; /* slate-900 */
+        }
+        
+        /* --- Style Papan Catur --- */
+        .chess-square {
+            width: 100%;
+            padding-bottom: 100%; /* Rasio aspek 1:1 */
+            position: relative;
+        }
+        .chess-square-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+        
+        /* --- VISUAL BIDAK (Kontras Tinggi) --- */
+        .piece-white {
+            color: #f8fafc; /* slate-50 */
+            text-shadow: 0 0 3px black, 0 0 3px black;
+        }
+        .piece-black {
+            color: #1e293b; /* slate-800 */
+            text-shadow: 0 0 2px white;
+        }
+        
+        .rotated-piece { transform: rotate(180deg); }
+        
+        /* --- Highlight Papan --- */
+        .selected-piece { background-color: rgba(59, 130, 246, 0.5); }
+        .valid-move::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30%; height: 30%;
+            background-color: rgba(250, 204, 21, 0.6);
+            border-radius: 50%;
+        }
+        .valid-move.castling-move::after {
+             background-color: rgba(22, 163, 74, 0.7); /* Hijau */
+             width: 50%;
+             height: 50%;
+        }
+        .active-spell {
+            box-shadow: 0 0 15px 3px rgba(250, 204, 21, 0.7);
+            border-color: #FACC15;
+        }
+
+        /* --- Style Tombol & Modal --- */
+        .btn-action {
+            transition: all 0.2s ease-in-out;
+        }
+        .btn-action:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+
+        /* --- Style Seleksi Spell --- */
+        .spell-card {
+            border: 3px solid #4b5563; /* gray-600 */
+            transition: all 0.2s ease;
+            width: calc(33.33% - 8px); /* 3 kartu per baris, dikurangi gap */
+            min-width: 90px;
+        }
+        .spell-card-selected {
+            border-color: #3b82f6; /* blue-500 */
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+        }
+        
+        /* Style untuk tombol Konfirmasi & Batal */
+        .confirm-ui-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        /* --- VFX (Efek Visual) --- */
+        @keyframes shield-blue {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+            50% { box-shadow: 0 0 15px 5px rgba(59, 130, 246, 0.7); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+        .vfx-fortify {
+            animation: shield-blue 1.5s infinite ease-out;
+            border-radius: 50%;
+        }
+
+        @keyframes drip-green {
+            0% { opacity: 1; transform: translateY(-5px) scale(1); }
+            100% { opacity: 0; transform: translateY(10px) scale(0.8); }
+        }
+        .vfx-poison-container {
+            position: relative;
+        }
+        .vfx-poison-container::before {
+            content: '💧';
+            color: #22c55e; /* green-500 */
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform-origin: center;
+            animation: drip-green 1s infinite linear;
+            font-size: 0.8rem;
+            text-shadow: 0 0 2px black;
+        }
+        .vfx-poison-feedback {
+            animation: shake 0.5s infinite;
+        }
+        
+        @keyframes pulse-red {
+            0% { transform: scale(1); opacity: 0.7; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.7; }
+        }
+        .vfx-rage {
+            color: #ef4444 !important; /* red-500 */
+            text-shadow: 0 0 10px #ef4444;
+            animation: pulse-red 1s infinite;
+        }
+        
+        @keyframes pulse-yellow {
+            0% { text-shadow: 0 0 4px #facc15; }
+            50% { text-shadow: 0 0 12px #facc15, 0 0 12px #facc15; }
+            100% { text-shadow: 0 0 4px #facc15; }
+        }
+        .vfx-bless {
+            animation: pulse-yellow 1.5s infinite;
+        }
+
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-2px, 0px) rotate(1deg); }
+            30% { transform: translate(2px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-2px, 1px) rotate(0deg); }
+            70% { transform: translate(2px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+        /* --- AKHIR VFX --- */
+
+
+        @media (min-width: 640px) {
+            .chess-square-content { font-size: 2.5rem; }
+            .spell-card { min-width: 100px; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-2 text-white">
+
+    <!-- 
+      **********************************************
+      * 1. LAYAR MENU UTAMA 
+      **********************************************
+    -->
+    <div id="main-menu-screen" class="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl p-8 flex flex-col gap-6 text-center animate-fade-in">
+        <h1 class="text-5xl font-bold text-white">Anichess</h1>
+        <p class="text-lg text-gray-300">Catur Sihir Hotseat</p>
+        
+        <div class="flex flex-col gap-4 mt-4">
+            <button id="start-game-btn" class="btn-action w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 px-6 rounded-lg text-xl shadow-lg">
+                Mulai (Hotseat)
+            </button>
+            <!-- (PERMINTAAN AI) Tombol diaktifkan -->
+            <button id="start-ai-btn" class="btn-action w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-lg text-lg shadow-md">
+                Lawan AI (Beta)
+            </button>
+            <button id="settings-btn" class="btn-action w-full bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-lg text-lg shadow-md">
+                Pengaturan
+            </button>
+            <button id="about-btn" class="btn-action w-full bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-lg text-lg shadow-md">
+                Tentang
+            </button>
+        </div>
+    </div>
+    
+    <!-- 
+      **********************************************
+      * 2. LAYAR DECKBUILDING
+      **********************************************
+    -->
+    <div id="spell-select-screen" class="hidden w-full max-w-lg bg-gray-800 rounded-2xl shadow-2xl p-4 flex flex-col gap-4 animate-fade-in">
+        
+        <h1 class="text-2xl font-bold text-center text-white">Buat Spellbook</h1>
+        
+        <div id="player-2-select" class="transform rotate-180 p-3 rounded-lg bg-gray-700">
+            <h2 id="p2-select-title" class="text-center font-bold text-red-400 text-lg">Player 2: Chaos</h2>
+            <p id="p2-select-status" class="text-center text-sm text-gray-300 mb-2">Pilih 5 Spell</p>
+            <div id="player-2-spell-cards" class="flex flex-wrap justify-center gap-2">
+            </div>
+        </div>
+
+        <button id="confirm-spells-btn" class="btn-action w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-lg text-lg shadow-md disabled:bg-gray-500 disabled:opacity-70" disabled>
+            Selesai & Mulai
+        </button>
+        
+        <div id="player-1-select" class="p-3 rounded-lg bg-gray-700">
+            <h2 class="text-center font-bold text-blue-400 text-lg">Player 1: Order</h2>
+            <p id="p1-select-status" class="text-center text-sm text-gray-300 mb-2">Pilih 5 Spell</p>
+            <div id="player-1-spell-cards" class="flex flex-wrap justify-center gap-2">
+            </div>
+        </div>
+        
+    </div>
+
+    <!-- 
+      **********************************************
+      * 3. LAYAR GAME UTAMA
+      **********************************************
+    -->
+    <div id="game-screen" class="hidden w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl p-4 flex flex-col gap-2 animate-fade-in">
+        
+        <div id="player-2-ui" class="p-2 rounded-lg bg-gray-700"> <!-- (PERMINTAAN AI) Hapus rotasi jika vs AI -->
+            <h2 id="p2-title" class="text-center font-bold text-red-400 text-lg">Player 2: Chaos</h2>
+            <div class="flex justify-center items-center gap-2 my-2">
+                <span class="font-medium">Mana:</span>
+                <div id="player-2-mana" class="flex gap-1"></div>
+                <span id="player-2-mana-text" class="ml-2 font-bold">1 / 5</span>
+            </div>
+            <div id="player-2-spells" class="grid grid-cols-3 gap-2">
+            </div>
+            <div id="p2-confirm-ui" class="hidden confirm-ui-container">
+                <button id="p2-confirm-turn-btn" class="btn-action bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded-lg">Konfirmasi</button>
+                <button id="p2-undo-btn" class="btn-action bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded-lg">Batalkan</button>
+            </div>
+        </div>
+
+        <div id="game-log" class="w-full h-16 bg-gray-900 rounded-lg p-2 text-sm text-gray-300 overflow-y-auto border border-gray-700">
+        </div>
+
+        <div id="board-container" class="w-full aspect-square grid grid-cols-8 gap-0 overflow-hidden rounded-lg shadow-inner border-2 border-gray-700">
+        </div>
+
+        <div id="player-1-ui" class="p-2 rounded-lg bg-gray-700">
+            <h2 class="text-center font-bold text-blue-400 text-lg">Player 1: Order</h2>
+            <div class="flex justify-center items-center gap-2 my-2">
+                <span class="font-medium">Mana:</span>
+                <div id="player-1-mana" class="flex gap-1"></div>
+                <span id="player-1-mana-text" class="ml-2 font-bold">1 / 5</span>
+            </div>
+            <div id="player-1-spells" class="grid grid-cols-3 gap-2">
+            </div>
+            <div id="p1-confirm-ui" class="hidden confirm-ui-container">
+                <button id="p1-confirm-turn-btn" class="btn-action bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded-lg">Konfirmasi</Gbutton>
+                <button id="p1-undo-btn" class="btn-action bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded-lg">Batalkan</button>
+            </div>
+        </div>
+    </div> <!-- Akhir Game Screen -->
+
+    
+    <!-- 
+      **********************************************
+      * MODAL & OVERLAY
+      **********************************************
+    -->
+    
+    <div id="turn-overlay" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 transition-opacity duration-300">
+        <div class="bg-gray-800 p-8 rounded-2xl shadow-xl text-center animate-fade-in">
+            <h1 id="turn-message" class="text-3xl font-bold mb-6">Giliran Player 1</h1>
+            <button id="start-turn-button" class="btn-action w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-6 rounded-lg text-xl">
+                Mulai Giliran
+            </button>
+        </div>
+    </div>
+    
+    <div id="game-over-overlay" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 transition-opacity duration-300">
+        <div class="bg-gray-800 p-8 rounded-2xl shadow-xl text-center animate-fade-in">
+            <h1 id="game-over-message" class="text-3xl font-bold mb-6">Player 1 Menang!</h1>
+            <button id="restart-button" class="btn-action w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-lg text-xl">
+                Main Lagi?
+            </button>
+        </div>
+    </div>
+    
+    <div id="settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+         <div class="bg-gray-800 rounded-2xl p-6 w-full max-w-md text-center shadow-2xl animate-fade-in">
+            <h3 class="text-2xl font-bold mb-4 text-white">Pengaturan</h3>
+            <!-- (PERMINTAAN AI) Pengaturan Kesulitan AI -->
+            <div class="text-left">
+                <label for="ai-difficulty" class="block text-sm font-medium text-gray-300">Kesulitan AI (Depth)</label>
+                <select id="ai-difficulty" class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    <option value="1">Mudah (Depth 1)</option>
+                    <option value="2">Normal (Depth 2)</option>
+                    <option value="3">Sulit (Depth 3)</option>
+                </select>
+                <p class="text-xs text-gray-400 mt-1">Depth lebih tinggi = AI berpikir lebih lama.</p>
+            </div>
+            <button id="settings-close-btn" class="btn-action bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg mt-6">Tutup</button>
+        </div>
+    </div>
+
+    <div id="about-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+         <div class="bg-gray-800 rounded-2xl p-6 w-full max-w-md text-center shadow-2xl overflow-y-auto max-h-[90vh] animate-fade-in">
+            <h3 class="text-2xl font-bold mb-4 text-white">Tentang Anichess</h3>
+            <p class="text-gray-300 mb-4 text-left">Anichess adalah game catur sihir. Lawan teman (hotseat) atau AI (beta) menggunakan *spell* unik dan kalahkan raja musuh!</p>
+            
+            <div class="mt-6 border-t border-gray-700 pt-4 text-left">
+                <h4 class="font-semibold text-white mb-2">Catatan Perubahan (Changelog)</h4>
+                <ul class="text-sm text-gray-400 list-disc pl-5 space-y-1">
+                    <li><span class="font-semibold text-gray-300">v2.2:</span> Tambah AI (Beta). Perbaikan bug kritis spell (Poison, Fortify).</li>
+                    <li><span class="font-semibold text-gray-300">v2.1:</span> Perbaikan bug spell (Meteor, Time Warp). Implementasi semua spell V2.</li>
+                    <li><span class="font-semibold text-gray-300">v2.0:</span> Implementasi Deckbuilding & Siklus Kartu. Tambahan VFX/SFX.</li>
+                    <li><span class="font-semibold text-gray-300">v1.4:</span> Penambahan tombol Batal/Undo, Rokade, En Passant.</li>
+                </ul>
+            </div>
+
+            <div class="mt-6 border-t border-gray-700 pt-4 text-left">
+                <h4 class="font-semibold text-sm text-white mb-2">Informasi Hak Cipta</h4>
+                <p class="text-xs text-gray-400 leading-relaxed">Game ini, termasuk seluruh elemen di dalamnya, adalah karya cipta yang dilindungi. Dilarang menggandakan atau mendistribusikan ulang tanpa izin tertulis dari pencipta.</p>
+            </div>
+            
+            <p class="text-gray-400 mt-6 mb-1">Dibuat oleh:</p>
+            <p class="text-lg font-semibold text-white mb-6">Deny Kusrianto</p>
+            
+            <div class="flex justify-center gap-4 mb-6">
+                <a href="https://www.instagram.com/kaltimff_store?igsh=bWlzeHpiZ281djN4" target="_blank" class="btn-action bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded-lg inline-flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24"><path d="M7.8,2H16.2C19.4,2 22,4.6 22,7.8V16.2A5.8,5.8 0 0,1 16.2,22H7.8C4.6,22 2,19.4 2,16.2V7.8A5.8,5.8 0 0,1 7.8,2M7.6,4A3.6,3.6 0 0,0 4,7.6V16.4C4,18.39 5.61,20 7.6,20H16.4A3.6,3.6 0 0,0 20,16.4V7.6C20,5.61 18.39,4 16.4,4H7.6M17.25,5.5A1.25,1.25 0 0,1 18.5,6.75A1.25,1.25 0 0,1 17.25,8A1.25,1.25 0 0,1 16,6.75A1.25,1.25 0 0,1 17.25,5.5M12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9Z" /></svg>
+                    Instagram
+                </a>
+                <a href="https://wa.me/message/JNJFBTFD773MB1" target="_blank" class="btn-action bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg inline-flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.31 20.62C8.75 21.41 10.37 21.82 12.04 21.82C17.5 21.82 21.95 17.37 21.95 11.91C21.95 6.45 17.5 2 12.04 2M12.04 3.67C16.56 3.67 20.28 7.39 20.28 11.91C20.28 16.43 16.56 20.15 12.04 20.15C10.46 20.15 8.96 19.74 7.64 19L7.1 18.68L4.31 19.38L5.02 16.68L4.67 16.14C3.89 14.81 3.46 13.31 3.46 11.91C3.46 7.39 7.18 3.67 12.04 3.67M9.13 7.5C8.86 7.5 8.54 7.59 8.28 8.06C8.02 8.53 7.37 9.19 7.37 10.4C7.37 11.61 8.31 12.75 8.47 12.94C8.63 13.13 10.03 15.35 12.21 16.22C13.96 16.92 14.33 16.76 14.78 16.71C15.23 16.66 16.19 16.13 16.38 15.5C16.57 14.87 16.57 14.34 16.52 14.24C16.47 14.14 16.28 14.09 16.02 13.95C15.76 13.81 14.61 13.25 14.39 13.16C14.17 13.07 14.02 13.02 13.88 13.26C13.74 13.5 13.26 14.02 13.12 14.16C12.98 14.31 12.84 14.36 12.58 14.22C12.05 13.95 11.23 13.5 10.23 12.59C9.44 11.88 8.91 11.03 8.77 10.77C8.63 10.51 8.74 10.37 8.88 10.24C8.95 10.17 9.07 10.04 9.21 9.89C9.35 9.75 9.4 9.66 9.5 9.52C9.6 9.37 9.55 9.23 9.5 9.13C9.45 9.03 9.03 8 8.84 7.59C8.65 7.18 8.47 7.23 8.28 7.23" /></svg>
+                    WhatsApp
+                </a>
+            </div>
+            
+            <button id="about-close-btn" class="btn-action bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg mt-6">Tutup</button>
+        </div>
+    </div>
+
+
+    <!-- JavaScript Utama Game -->
+    <script>
+        // --- Setup Efek Suara ---
+        let audioReady = false;
+        const synthClick = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.1 } }).toDestination();
+        const synthFortify = new Tone.MonoSynth({ oscillator: { type: "sawtooth" }, envelope: { attack: 0.01, decay: 0.1, release: 0.1 }, filterEnvelope: { attack: 0.01, decay: 0.05, sustain: 0, release: 0.1, baseFrequency: 300, octaves: 4 } }).toDestination();
+        const synthPoison = new Tone.NoiseSynth({ noise: { type: 'pink' }, envelope: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.1 } }).toDestination();
+        const poisonFilter = new Tone.AutoFilter("8n").toDestination().start();
+        synthPoison.connect(poisonFilter);
+        const synthRage = new Tone.FMSynth({ harmonicity: 1.5, modulationIndex: 5, envelope: { attack: 0.01, decay: 0.3, sustain: 0, release: 0.1 }, modulationEnvelope: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.1 } }).toDestination();
+        const synthMeteor = new Tone.FMSynth({ harmonicity: 5, modulationIndex: 10, envelope: { attack: 0.01, decay: 0.5 }, modulationEnvelope: { attack: 0.01, decay: 0.3 } }).toDestination();
+        const synthTimeWarp = new Tone.MembraneSynth({ pitchDecay: 0.01, octaves: 10, envelope: { attack: 0.001, decay: 0.3, sustain: 0.01, release: 0.1 } }).toDestination();
+
+        async function initAudio() { 
+            if (!audioReady) { 
+                await Tone.start(); 
+                audioReady = true; 
+                console.log('Audio siap.');
+            } 
+        }
+
+        // --- Elemen Global ---
+        const mainMenuScreen = document.getElementById('main-menu-screen');
+        const spellSelectScreen = document.getElementById('spell-select-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const aboutModal = document.getElementById('about-modal');
+        const settingsModal = document.getElementById('settings-modal');
+        const turnOverlay = document.getElementById('turn-overlay');
+        const gameOverOverlay = document.getElementById('game-over-overlay');
+        
+        // --- Elemen Tombol Menu & Modal ---
+        const startGameBtn = document.getElementById('start-game-btn');
+        const startAiBtn = document.getElementById('start-ai-btn'); // (PERMINTAAN AI)
+        const settingsBtn = document.getElementById('settings-btn');
+        const aboutBtn = document.getElementById('about-btn');
+        const settingsCloseBtn = document.getElementById('settings-close-btn');
+        const aboutCloseBtn = document.getElementById('about-close-btn');
+        const aiDifficultySelect = document.getElementById('ai-difficulty'); // (PERMINTAAN AI)
+        
+        // --- Elemen Seleksi Spell ---
+        const p1SpellCardsContainer = document.getElementById('player-1-spell-cards');
+        const p2SpellCardsContainer = document.getElementById('player-2-spell-cards');
+        const p1SelectStatus = document.getElementById('p1-select-status');
+        const p2SelectStatus = document.getElementById('p2-select-status');
+        const p2SelectTitle = document.getElementById('p2-select-title'); // (PERMINTAAN AI)
+        const confirmSpellsBtn = document.getElementById('confirm-spells-btn');
+
+        // --- Elemen Game ---
+        const boardContainer = document.getElementById('board-container');
+        const gameLog = document.getElementById('game-log');
+        const p1ManaDisplay = document.getElementById('player-1-mana');
+        const p2ManaDisplay = document.getElementById('player-2-mana');
+        const p1ManaText = document.getElementById('player-1-mana-text');
+        const p2ManaText = document.getElementById('player-2-mana-text');
+        const p1SpellsContainer = document.getElementById('player-1-spells');
+        const p2SpellsContainer = document.getElementById('player-2-spells');
+        const p1ConfirmUI = document.getElementById('p1-confirm-ui');
+        const p1ConfirmTurnBtn = document.getElementById('p1-confirm-turn-btn');
+        const p1UndoBtn = document.getElementById('p1-undo-btn');
+        const p2ConfirmUI = document.getElementById('p2-confirm-ui');
+        const p2ConfirmTurnBtn = document.getElementById('p2-confirm-turn-btn');
+        const p2UndoBtn = document.getElementById('p2-undo-btn');
+        const p2UiElement = document.getElementById('player-2-ui'); // (PERMINTAAN AI)
+        const p2TitleElement = document.getElementById('p2-title'); // (PERMINTAAN AI)
+        
+        const turnMessage = document.getElementById('turn-message');
+        const startTurnButton = document.getElementById('start-turn-button');
+        const gameOverMessage = document.getElementById('game-over-message');
+        const restartButton = document.getElementById('restart-button');
+        
+        // --- Konfigurasi Awal & State Game ---
+        
+        const PIECES = {
+            'r': { piece: 'rook', color: 'black', icon: 'fa-solid fa-chess-rook' },
+            'n': { piece: 'knight', color: 'black', icon: 'fa-solid fa-chess-knight' },
+            'b': { piece: 'bishop', color: 'black', icon: 'fa-solid fa-chess-bishop' },
+            'q': { piece: 'queen', color: 'black', icon: 'fa-solid fa-chess-queen' },
+            'k': { piece: 'king', color: 'black', icon: 'fa-solid fa-chess-king' },
+            'p': { piece: 'pawn', color: 'black', icon: 'fa-solid fa-chess-pawn' },
+            'R': { piece: 'rook', color: 'white', icon: 'fa-solid fa-chess-rook' },
+            'N': { piece: 'knight', color: 'white', icon: 'fa-solid fa-chess-knight' },
+            'B': { piece: 'bishop', color: 'white', icon: 'fa-solid fa-chess-bishop' },
+            'Q': { piece: 'queen', color: 'white', icon: 'fa-solid fa-chess-queen' },
+            'K': { piece: 'king', color: 'white', icon: 'fa-solid fa-chess-king' },
+            'P': { piece: 'pawn', color: 'white', icon: 'fa-solid fa-chess-pawn' },
+            '': null
+        };
+
+        const initialBoardSetup = [
+            ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+            ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+            ['', '', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', '', ''],
+            ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+            ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+        ];
+        
+        // --- Database Spell ---
+        const ALL_SPELLS = {
+            // Order (10)
+            'spell-fortify': { id: 'spell-fortify', player: 'white', cost: 2, name: 'Fortify (2)', desc: '1 bidak kebal (1 giliran)' },
+            'spell-swap': { id: 'spell-swap', player: 'white', cost: 3, name: 'Swap (3)', desc: 'Tukar 2 bidak (non-Raja) yg sdh gerak' },
+            'spell-empower': { id: 'spell-empower', player: 'white', cost: 3, name: 'Empower (3)', desc: '1 Pawn bisa maju 2 langkah lagi' },
+            'spell-heal': { id: 'spell-heal', player: 'white', cost: 1, name: 'Heal (1)', desc: 'Sembuhkan 1 bidak dari Poison' },
+            'spell-teleport': { id: 'spell-teleport', player: 'white', cost: 4, name: 'Teleport (4)', desc: 'Tukar Raja & Benteng' },
+            'spell-shieldwall': { id: 'spell-shieldwall', player: 'white', cost: 2, name: 'Shield Wall (2)', desc: 'Pawn baris awal kebal (1 giliran)' },
+            'spell-recall': { id: 'spell-recall', player: 'white', cost: 2, name: 'Recall (2)', desc: 'Mundurkan 1 bidak teman ke posisi awal' },
+            'spell-bless': { id: 'spell-bless', player: 'white', cost: 3, name: 'Bless (3)', desc: '1 Gajah bisa bergerak seperti Raja (1 turn)' },
+            'spell-midas': { id: 'spell-midas', player: 'white', cost: 1, name: 'Midas Touch (1)', desc: 'Pasif: Dapat 1 Mana jika makan bidak' },
+            'spell-timewarp': { id: 'spell-timewarp', player: 'white', cost: 5, name: 'Time Warp (5)', desc: 'Instan: Batalkan seluruh giliran lawan' }, 
+            
+            // Chaos (10)
+            'spell-blink': { id: 'spell-blink', player: 'black', cost: 3, name: 'Blink (3)', desc: 'Pindah ke kotak kosong terdekat' },
+            'spell-poison': { id: 'spell-poison', player: 'black', cost: 2, name: 'Poison (2)', desc: 'Kunci 1 bidak lawan (1 giliran)' },
+            'spell-sacrifice': { id: 'spell-sacrifice', player: 'black', cost: 1, name: 'Sacrifice (1)', desc: 'Hancurkan 1 Pawn, dapat 4 Mana' },
+            'spell-fear': { id: 'spell-fear', player: 'black', cost: 2, name: 'Fear (2)', desc: 'Mundurkan 1 bidak lawan 1 kotak' },
+            'spell-rage': { id: 'spell-rage', player: 'black', cost: 2, name: 'Rage (2)', desc: '1 Benteng gerak diagonal (1 turn)' },
+            'spell-pact': { id: 'spell-pact', player: 'black', cost: 4, name: 'Unholy Pact (4)', desc: 'Tukar 1 Gajah & 1 Benteng' },
+            'spell-meteor': { id: 'spell-meteor', player: 'black', cost: 5, name: 'Meteor (5)', desc: 'Hancurkan 1 bidak (non-Raja)' },
+            'spell-mindcontrol': { id: 'spell-mindcontrol', player: 'black', cost: 4, name: 'Mind Control (4)', desc: 'Gerakkan 1 bidak lawan (non-Raja)' },
+            'spell-vortex': { id: 'spell-vortex', player: 'black', cost: 2, name: 'Vortex (2)', desc: 'Tarik 1 bidak lawan 1 kotak' },
+            'spell-decay': { id: 'spell-decay', player: 'black', cost: 1, name: 'Decay (1)', desc: 'Pasif: Pawn lawan tdk bisa promosi' },
+        };
+        
+        // --- State Deckbuilding ---
+        const SPELLBOOK_SIZE = 5; 
+        const HAND_SIZE = 3; 
+        
+        // --- Game State ---
+        let boardState = []; 
+        let currentPlayer = 'white';
+        let selectedPiece = null;
+        let validMoves = [];
+        let playerMana = { 'white': 1, 'black': 1 };
+        const MAX_MANA = 5;
+        let activeSpell = null;
+        let spellState = {};
+        
+        // --- State Deck & Hand ---
+        let selectedSpells = { white: [], black: [] }; 
+        let playerDecks = { white: [], black: [] }; 
+        let playerHands = { white: [], black: [] }; 
+        let spellUsedThisTurn = null; 
+        
+        // --- State Pasif & History ---
+        let passiveSpells = { white: [], black: [] };
+        let historyStateStack = [];
+        const MAX_HISTORY = 10; 
+        
+        // --- State untuk Undo & Mekanika Catur ---
+        let currentTurnBoardState = null;
+        let currentTurnPlayerMana = null;
+        let enPassantTarget = null; 
+        let turnInProgress = false; 
+        
+        // --- (PERMINTAAN AI) State AI ---
+        let isVsAI = false;
+        let aiDifficulty = 2; // Default (Depth 2)
+        const pieceValues = { 'pawn': 10, 'knight': 30, 'bishop': 30, 'rook': 50, 'queen': 90, 'king': 900 };
+
+
+        // --- Event Listener Menu & Modal ---
+        
+        startGameBtn.addEventListener('click', async () => {
+            await initAudio(); 
+            synthClick.triggerAttackRelease('C5', '8n');
+            mainMenuScreen.classList.add('hidden');
+            spellSelectScreen.classList.remove('hidden');
+            // (PERMINTAAN AI) Siapkan untuk game Hotseat
+            p2SelectTitle.textContent = "Player 2: Chaos";
+            p2SelectStatus.textContent = `Pilih ${SPELLBOOK_SIZE} Spell`;
+            p2SpellCardsContainer.parentElement.classList.remove('hidden');
+            confirmSpellsBtn.classList.remove('hidden');
+            initSpellSelection();
+        });
+
+        // (PERMINTAAN AI)
+        startAiBtn.addEventListener('click', async () => {
+            await initAudio(); 
+            synthClick.triggerAttackRelease('C5', '8n');
+            mainMenuScreen.classList.add('hidden');
+            spellSelectScreen.classList.remove('hidden');
+            
+            // Siapkan untuk game AI
+            isVsAI = true;
+            p2SelectTitle.textContent = "Lawan AI: Chaos";
+            p2SelectStatus.textContent = "AI akan menggunakan semua spell Chaos.";
+            p2SpellCardsContainer.parentElement.classList.add('hidden'); // Sembunyikan pilihan AI
+            confirmSpellsBtn.classList.add('hidden'); // Sembunyikan tombol konfirmasi P2
+            
+            initSpellSelection();
+        });
+
+        settingsBtn.addEventListener('click', async () => {
+            await initAudio(); 
+            synthClick.triggerAttackRelease('C5', '8n');
+            aiDifficultySelect.value = aiDifficulty; // Tampilkan kesulitan saat ini
+            settingsModal.classList.remove('hidden');
+        });
+        
+        aboutBtn.addEventListener('click', async () => {
+            await initAudio(); 
+            synthClick.triggerAttackRelease('C5', '8n');
+            aboutModal.classList.remove('hidden');
+        });
+        
+        settingsCloseBtn.addEventListener('click', async () => {
+            await initAudio(); 
+            synthClick.triggerAttackRelease('C4', '8n');
+            aiDifficulty = parseInt(aiDifficultySelect.value); // Simpan kesulitan
+            settingsModal.classList.add('hidden');
+        });
+
+        aboutCloseBtn.addEventListener('click', async () => {
+            await initAudio(); 
+            synthClick.triggerAttackRelease('C4', '8n');
+            aboutModal.classList.add('hidden');
+        });
+        
+        [settingsModal, aboutModal].forEach(modal => {
+            modal.addEventListener('click', async (e) => {
+                if (e.target === modal) { 
+                    await initAudio(); 
+                    synthClick.triggerAttackRelease('C4', '8n');
+                    modal.classList.add('hidden');
+                }
+            });
+        });
+
+        // --- Logika Seleksi Spell (Deckbuilding) ---
+
+        function initSpellSelection() {
+            p1SpellCardsContainer.innerHTML = '';
+            p2SpellCardsContainer.innerHTML = '';
+            selectedSpells = { white: [], black: [] };
+            
+            // (PERMINTAAN AI) Jika vs AI, AI otomatis mengambil semua spell-nya
+            if (isVsAI) {
+                selectedSpells.black = Object.values(ALL_SPELLS)
+                    .filter(s => s.player === 'black')
+                    .map(s => s.id);
+            }
+            
+            updateSpellSelectionStatus();
+            
+            Object.values(ALL_SPELLS).forEach(spell => {
+                const card = document.createElement('div');
+                card.className = 'spell-card bg-gray-600 rounded-lg p-2 text-center cursor-pointer';
+                card.dataset.spellId = spell.id;
+                card.dataset.player = spell.player;
+                
+                card.innerHTML = `
+                    <div class="font-bold text-sm">${spell.name}</div>
+                    <div class="text-xs text-gray-300 mt-1">${spell.desc}</div>
+                `;
+                
+                card.addEventListener('click', () => handleSpellCardClick(card, spell));
+                
+                if (spell.player === 'white') {
+                    p1SpellCardsContainer.appendChild(card);
+                } else if (!isVsAI) { // Hanya tambahkan kartu P2 jika bukan vs AI
+                    p2SpellCardsContainer.appendChild(card);
+                }
+            });
+        }
+        
+        async function handleSpellCardClick(card, spell) {
+            await initAudio(); 
+            const player = spell.player;
+            const spellId = spell.id;
+            const playerSelection = selectedSpells[player];
+            
+            if (playerSelection.includes(spellId)) {
+                selectedSpells[player] = playerSelection.filter(id => id !== spellId);
+                card.classList.remove('spell-card-selected');
+                synthClick.triggerAttackRelease('C4', '8n');
+            } else if (playerSelection.length < SPELLBOOK_SIZE) {
+                selectedSpells[player].push(spellId);
+                card.classList.add('spell-card-selected');
+                synthClick.triggerAttackRelease('E4', '8n');
+            } else {
+                synthClick.triggerAttackRelease('A3', '8n');
+                logMessage(`Hanya bisa memilih ${SPELLBOOK_SIZE} spell.`, true);
+            }
+            updateSpellSelectionStatus();
+            
+            // (PERMINTAAN AI) Jika vs AI, P1 selesai memilih, langsung mulai
+            if (isVsAI && selectedSpells.white.length === SPELLBOOK_SIZE) {
+                confirmSpellsAndStartGame();
+            }
+        }
+        
+        function updateSpellSelectionStatus() {
+            const p1Selected = selectedSpells.white.length;
+            const p2Selected = selectedSpells.black.length;
+            
+            p1SelectStatus.textContent = `Pilih ${SPELLBOOK_SIZE} Spell (${p1Selected} / ${SPELLBOOK_SIZE})`;
+            
+            if (!isVsAI) {
+                p2SelectStatus.textContent = `Pilih ${SPELLBOOK_SIZE} Spell (${p2Selected} / ${SPELLBOOK_SIZE})`;
+                confirmSpellsBtn.disabled = !(p1Selected === SPELLBOOK_SIZE && p2Selected === SPELLBOOK_SIZE);
+            }
+        }
+        
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+        
+        confirmSpellsBtn.addEventListener('click', confirmSpellsAndStartGame);
+
+        async function confirmSpellsAndStartGame() {
+            await initAudio(); 
+            synthClick.triggerAttackRelease('G5', '8n');
+            
+            // Pisahkan spell pasif dari deck
+            passiveSpells.white = selectedSpells.white.filter(id => ALL_SPELLS[id].desc.includes('Pasif'));
+            passiveSpells.black = selectedSpells.black.filter(id => ALL_SPELLS[id].desc.includes('Pasif'));
+
+            playerDecks.white = selectedSpells.white.filter(id => !passiveSpells.white.includes(id));
+            playerDecks.black = selectedSpells.black.filter(id => !passiveSpells.black.includes(id));
+            
+            shuffleArray(playerDecks.white);
+            shuffleArray(playerDecks.black);
+            
+            spellSelectScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            initGame();
+        }
+        
+        // --- Fungsi Inisialisasi Game ---
+
+        function initGame() {
+            boardState = initialBoardSetup.map(row => 
+                row.map(cell => {
+                    if (cell === '') return null;
+                    // (PERBAIKAN BUG) Tambah isBlessed
+                    return { ...PIECES[cell], hasMoved: false, isFortified: false, isPoisoned: false, isEmpowered: false, isRaged: false, isBlessed: false }; 
+                })
+            );
+            
+            currentPlayer = 'white';
+            selectedPiece = null;
+            validMoves = [];
+            playerMana = { 'white': 1, 'black': 1 };
+            activeSpell = null;
+            spellState = {};
+            currentTurnBoardState = null;
+            currentTurnPlayerMana = null;
+            enPassantTarget = null;
+            turnInProgress = false;
+            spellUsedThisTurn = null;
+            historyStateStack = []; 
+            
+            // Draw kartu awal
+            playerHands.white = playerDecks.white.splice(0, HAND_SIZE);
+            playerHands.black = playerDecks.black.splice(0, HAND_SIZE);
+            
+            gameLog.innerHTML = '';
+            
+            renderPlayerHand('white');
+            renderPlayerHand('black');
+            
+            renderBoard();
+            updateManaUI();
+            updateSpellButtons();
+            logMessage("Game dimulai. Giliran Order (Putih).");
+            
+            if(passiveSpells.white.length > 0) logMessage(`Order memiliki pasif: ${passiveSpells.white.map(id => ALL_SPELLS[id].name).join(', ')}`);
+            if(passiveSpells.black.length > 0) logMessage(`Chaos memiliki pasif: ${passiveSpells.black.map(id => ALL_SPELLS[id].name).join(', ')}`);
+
+            turnOverlay.classList.add('hidden');
+            gameOverOverlay.classList.add('hidden');
+            p1ConfirmUI.classList.add('hidden');
+            p2ConfirmUI.classList.add('hidden');
+            
+            // (PERMINTAAN AI) Atur UI untuk mode AI
+            if (isVsAI) {
+                p2UiElement.classList.remove('transform', 'rotate-180');
+                p2TitleElement.textContent = "AI: Chaos";
+                p2SpellsContainer.classList.add('hidden'); // AI tidak menunjukkan kartunya
+            } else {
+                p2UiElement.classList.add('transform', 'rotate-180');
+                p2TitleElement.textContent = "Player 2: Chaos";
+                p2SpellsContainer.classList.remove('hidden');
+            }
+            
+            // Simpan state paling awal
+            historyStateStack.push(JSON.parse(JSON.stringify(boardState)));
+        }
+        
+        function renderPlayerHand(player) {
+            const container = (player === 'white') ? p1SpellsContainer : p2SpellsContainer;
+            const hand = playerHands[player];
+            
+            container.innerHTML = ''; 
+            
+            hand.forEach((spellId, index) => {
+                if (!spellId) return; 
+                const spell = ALL_SPELLS[spellId];
+                container.appendChild(createSpellButton(spell, index));
+            });
+            
+            for (let i = hand.length; i < HAND_SIZE; i++) {
+                container.appendChild(createEmptySpellSlot());
+            }
+        }
+        
+        function createEmptySpellSlot() {
+            const slot = document.createElement('div');
+            slot.className = "text-xs bg-gray-800 rounded-lg p-2 h-16 border-2 border-gray-700 flex items-center justify-center text-gray-600";
+            slot.textContent = "Deck Habis";
+            return slot;
+        }
+
+        function createSpellButton(spell, handIndex) {
+            const button = document.createElement('button');
+            button.id = spell.id;
+            button.dataset.player = spell.player;
+            button.dataset.cost = spell.cost;
+            button.dataset.handIndex = handIndex; 
+            button.className = "spell-button text-xs bg-blue-600 hover:bg-blue-500 rounded-lg p-2 disabled:bg-gray-500 disabled:opacity-50 transition-all h-16 flex flex-col justify-between";
+            
+            if (spell.player === 'black') {
+                button.classList.replace('bg-blue-600', 'bg-purple-600');
+                button.classList.replace('hover:bg-blue-500', 'hover:bg-purple-500');
+            }
+            
+            button.innerHTML = `
+                <div class="font-bold">${spell.name}</div>
+                <div class="text-xs">${spell.desc}</div>
+            `;
+            
+             button.addEventListener('click', () => handleSpellButtonClick(button, spell));
+             
+            return button;
+        }
+        
+        // --- Fungsi Rendering ---
+
+        function renderBoard() {
+            boardContainer.innerHTML = '';
+            
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const isDark = (r + c) % 2 === 1;
+                    const square = document.createElement('div');
+                    square.className = `chess-square ${isDark ? 'bg-green-800' : 'bg-green-400'}`;
+                    
+                    const content = document.createElement('div');
+                    content.className = 'chess-square-content';
+                    content.dataset.row = r;
+                    content.dataset.col = c;
+                    
+                    const piece = boardState[r][c];
+                    
+                    if (piece) {
+                        const icon = document.createElement('i');
+                        icon.className = `${piece.icon} ${piece.color === 'white' ? 'piece-white' : 'piece-black'}`;
+                        
+                        if (piece.color === 'black') icon.classList.add('rotated-piece');
+                        
+                        // Terapkan VFX
+                        if (piece.isFortified) icon.classList.add('vfx-fortify');
+                        if (piece.isRaged) icon.classList.add('vfx-rage');
+                        if (piece.isBlessed) icon.classList.add('vfx-bless'); 
+                        if (piece.isPoisoned) {
+                             icon.classList.add('vfx-poison-feedback');
+                             content.classList.add('vfx-poison-container');
+                        }
+                        
+                        content.appendChild(icon);
+                    }
+
+                    if (selectedPiece && selectedPiece.row === r && selectedPiece.col === c) {
+                        content.classList.add('selected-piece');
+                    }
+
+                    const move = validMoves.find(m => m.row === r && m.col === c);
+                    if (move) {
+                        content.classList.add('valid-move');
+                        if (move.isCastling) {
+                            content.classList.add('castling-move');
+                        }
+                    }
+                    
+                    square.appendChild(content);
+                    boardContainer.appendChild(square);
+                }
+            }
+        }
+        
+        function updateManaUI() {
+            p1ManaDisplay.innerHTML = '';
+            for (let i = 0; i < MAX_MANA; i++) {
+                const manaOrb = document.createElement('div');
+                manaOrb.className = `w-4 h-4 rounded-full border-2 ${i < playerMana.white ? 'bg-blue-500 border-blue-300' : 'bg-gray-600 border-gray-500'}`;
+                p1ManaDisplay.appendChild(manaOrb);
+            }
+            p1ManaText.textContent = `${playerMana.white} / ${MAX_MANA}`;
+            
+            p2ManaDisplay.innerHTML = '';
+            for (let i = 0; i < MAX_MANA; i++) {
+                const manaOrb = document.createElement('div');
+                manaOrb.className = `w-4 h-4 rounded-full border-2 ${i < playerMana.black ? 'bg-red-500 border-red-300' : 'bg-gray-600 border-gray-500'}`;
+                p2ManaDisplay.appendChild(manaOrb);
+            }
+            p2ManaText.textContent = `${playerMana.black} / ${MAX_MANA}`;
+        }
+        
+        function updateSpellButtons() {
+            document.querySelectorAll('.spell-button').forEach(button => {
+                const player = button.dataset.player;
+                const cost = parseInt(button.dataset.cost);
+                button.disabled = (player !== currentPlayer || playerMana[player] < cost || turnInProgress);
+                
+                if (player !== currentPlayer) button.classList.remove('active-spell');
+            });
+            if (activeSpell) {
+                const playerHand = (currentPlayer === 'white') ? playerHands.white : playerHands.black;
+                const handIndex = playerHand.indexOf(activeSpell.id);
+                if (handIndex > -1) {
+                    const activeBtn = document.querySelector(`.spell-button[data-player="${currentPlayer}"][data-hand-index="${handIndex}"]`);
+                    if (activeBtn) activeBtn.classList.add('active-spell');
+                }
+            }
+        }
+        
+        function logMessage(message, isNotification = false) {
+            if (isNotification && gameScreen.classList.contains('hidden')) {
+                alert(message);
+                return;
+            }
+            const entry = document.createElement('div');
+            entry.textContent = message;
+            gameLog.appendChild(entry);
+            gameLog.scrollTop = gameLog.scrollHeight;
+        }
+
+        // --- Logika Inti Game ---
+
+        boardContainer.addEventListener('click', async (e) => {
+            if (turnInProgress || !turnOverlay.classList.contains('hidden')) return;
+            // (PERMINTAAN AI) Blokir input pemain saat giliran AI
+            if (isVsAI && currentPlayer === 'black') return; 
+            
+            const content = e.target.closest('.chess-square-content');
+            if (!content) return;
+            
+            const { row, col } = content.dataset;
+            const r = parseInt(row);
+            const c = parseInt(col);
+            
+            if (activeSpell) { await handleSpellClick(r, c); return; }
+            
+            const clickedPiece = boardState[r][c];
+            if (clickedPiece && clickedPiece.isPoisoned && clickedPiece.color === currentPlayer) {
+                 logMessage(`Bidak ${clickedPiece.piece} tidak bisa bergerak karena Poisoned!`);
+                 await initAudio();
+                 synthClick.triggerAttackRelease('A3', '8n');
+                 return;
+            }
+
+            if (!selectedPiece) {
+                if (clickedPiece && clickedPiece.color === currentPlayer) await selectPiece(r, c);
+            } else {
+                const move = validMoves.find(m => m.row === r && m.col === c);
+                if (move) {
+                    await movePiece(selectedPiece.row, selectedPiece.col, r, c, move);
+                    if (!gameOverOverlay.classList.contains('hidden')) return;
+                    showConfirmUI();
+                }
+                else if (clickedPiece && clickedPiece.color === currentPlayer) await selectPiece(r, c);
+                else deselectPiece();
+            }
+        });
+
+        async function selectPiece(r, c) {
+            await initAudio();
+            synthClick.triggerAttackRelease('C4', '8n');
+            selectedPiece = { row: r, col: c };
+            validMoves = getValidMoves(r, c);
+            renderBoard();
+        }
+        
+        function deselectPiece() {
+            selectedPiece = null;
+            validMoves = [];
+            renderBoard();
+        }
+        
+        async function movePiece(fromRow, fromCol, toRow, toCol, move) {
+            await initAudio();
+            
+            if (!turnInProgress) {
+                currentTurnBoardState = JSON.parse(JSON.stringify(boardState));
+                currentTurnPlayerMana = JSON.parse(JSON.stringify(playerMana));
+            }
+
+            const movingPiece = boardState[fromRow][fromCol];
+            const capturedPiece = boardState[toRow][toCol];
+
+            if (capturedPiece && capturedPiece.isFortified) {
+                logMessage(`Tidak bisa memakan ${capturedPiece.piece}, bidak itu di-Fortify!`);
+                synthFortify.triggerAttackRelease('C5', '8n'); 
+                deselectPiece(); 
+                return false; // (PERMINTAAN AI) Kembalikan false jika gagal
+            }
+            
+            if (capturedPiece) {
+                synthClick.triggerAttackRelease('E5', '8n'); 
+                if (passiveSpells.white.includes('spell-midas') && currentPlayer === 'white') {
+                    playerMana.white = Math.min(MAX_MANA, playerMana.white + 1);
+                    logMessage("Midas Touch! Dapat 1 Mana.");
+                    updateManaUI();
+                }
+            } else {
+                synthClick.triggerAttackRelease('C5', '8n'); 
+            }
+            
+            if (move.isEnPassant) {
+                const capturedPawnRow = (movingPiece.color === 'white') ? toRow + 1 : toRow - 1;
+                boardState[capturedPawnRow][toCol] = null;
+                logMessage("Memakan pion (En Passant)!");
+            }
+
+            boardState[toRow][toCol] = movingPiece;
+            boardState[fromRow][fromCol] = null;
+            movingPiece.hasMoved = true;
+            
+            if (move.isCastling) {
+                synthClick.triggerAttackRelease('G5', '8n'); 
+                if (toCol === 6) { 
+                    const rook = boardState[fromRow][7];
+                    boardState[fromRow][5] = rook;
+                    boardState[fromRow][7] = null;
+                    rook.hasMoved = true;
+                } else if (toCol === 2) { 
+                    const rook = boardState[fromRow][0];
+                    boardState[fromRow][3] = rook;
+                    boardState[fromRow][0] = null;
+                    rook.hasMoved = true;
+                }
+            }
+            
+            if (movingPiece.piece === 'pawn' && Math.abs(fromRow - toRow) === 2) {
+                enPassantTarget = { r: (fromRow + toRow) / 2, c: toCol, opponentColor: movingPiece.color };
+            }
+            
+            if (movingPiece.isEmpowered) movingPiece.isEmpowered = false;
+            if (movingPiece.isRaged) movingPiece.isRaged = false;
+            if (movingPiece.isBlessed) movingPiece.isBlessed = false; 
+
+            // Promosi
+            if (movingPiece.piece === 'pawn') {
+                if ((movingPiece.color === 'white' && toRow === 0) || (movingPiece.color === 'black' && toRow === 7)) {
+                    if (movingPiece.color === 'white' && passiveSpells.black.includes('spell-decay')) {
+                        logMessage("Pawn tidak bisa promosi karena Decay!");
+                    } else if (movingPiece.color === 'black' && passiveSpells.white.includes('spell-decay')) { 
+                        logMessage("Pawn tidak bisa promosi karena Decay!");
+                    } else {
+                        const newQueenChar = (movingPiece.color === 'white') ? 'Q' : 'q';
+                        boardState[toRow][toCol] = { ...PIECES[newQueenChar], hasMoved: true };
+                        logMessage("Pawn dipromosikan menjadi Queen!");
+                    }
+                }
+            }
+            
+            let logMsg = `${currentPlayer === 'white' ? 'Order' : 'Chaos'} memindahkan ${movingPiece.piece} dari (${fromRow},${fromCol}) ke (${toRow},${toCol}).`;
+            if (capturedPiece) logMsg += ` Memakan ${capturedPiece.piece}.`;
+            if (move.isCastling) logMsg = `${currentPlayer === 'white' ? 'Order' : 'Chaos'} melakukan Rokade!`;
+            logMessage(logMsg);
+            
+            if (capturedPiece && capturedPiece.piece === 'king') {
+                 showGameOver(currentPlayer);
+                 return true;
+            }
+            
+            deselectPiece(); 
+            return true; // (PERMINTAAN AI) Kembalikan true jika berhasil
+        }
+
+        // --- Logika Tombol Undo/Confirm ---
+        
+        function showConfirmUI() {
+            turnInProgress = true;
+            (currentPlayer === 'white' ? p1ConfirmUI : p2ConfirmUI).classList.remove('hidden');
+            updateSpellButtons(); 
+            deselectPiece();
+        }
+        
+        function hideConfirmUI() {
+            turnInProgress = false;
+            p1ConfirmUI.classList.add('hidden');
+            p2ConfirmUI.classList.add('hidden');
+            updateSpellButtons(); 
+        }
+
+        [p1UndoBtn, p2UndoBtn].forEach(btn => btn.addEventListener('click', async () => {
+            await initAudio();
+            synthClick.triggerAttackRelease('C4', '8n');
+            
+            boardState = JSON.parse(JSON.stringify(currentTurnBoardState));
+            playerMana = JSON.parse(JSON.stringify(currentTurnPlayerMana));
+            
+            currentTurnBoardState = null;
+            currentTurnPlayerMana = null;
+            activeSpell = null;
+            spellUsedThisTurn = null; 
+            
+            logMessage("Langkah/Spell dibatalkan.");
+            
+            hideConfirmUI();
+            renderBoard();
+            updateManaUI();
+            updateSpellButtons(); 
+        }));
+        
+        [p1ConfirmTurnBtn, p2ConfirmTurnBtn].forEach(btn => btn.addEventListener('click', async () => {
+            await initAudio();
+            synthClick.triggerAttackRelease('G4', '8n');
+            
+            hideConfirmUI();
+            
+            if (spellUsedThisTurn) {
+                cycleSpell(spellUsedThisTurn);
+                spellUsedThisTurn = null; 
+            }
+            
+            endTurn();
+        }));
+
+        function cycleSpell(spellId) {
+            const player = currentPlayer; 
+            const hand = playerHands[player];
+            const deck = playerDecks[player];
+
+            const handIndex = hand.indexOf(spellId);
+            if (handIndex === -1) {
+                console.error(`Spell ${spellId} tidak ditemukan di tangan ${player}!`);
+                return;
+            }
+
+            hand.splice(handIndex, 1, null); 
+            deck.push(spellId); 
+
+            const newSpellId = deck.shift(); 
+            
+            if (newSpellId) {
+                hand[handIndex] = newSpellId; 
+            }
+            
+            renderPlayerHand(player);
+        }
+
+        // --- (PERMINTAAN AI) Fungsi AI Trigger ---
+        async function triggerAIMove() {
+            logMessage("AI (Chaos) sedang berpikir...");
+            turnInProgress = true; // Blokir input
+            
+            // Beri sedikit waktu agar UI "AI berpikir" terlihat
+            setTimeout(async () => {
+                const bestMove = findBestMove();
+                
+                if (bestMove) {
+                    await movePiece(bestMove.fromR, bestMove.fromC, bestMove.toR, bestMove.toC, bestMove.move);
+                } else {
+                    logMessage("AI tidak menemukan langkah (Stalemate/Checkmate)!");
+                }
+                
+                turnInProgress = false;
+                if (!gameOverOverlay.classList.contains('hidden')) return; // Hentikan jika game over
+                endTurn();
+            }, 500); // Tunda 0.5 detik
+        }
+
+        function endTurn() {
+            // (PERBAIKAN BUG) Logika buff/debuff dipindahkan ke startTurnButton
+            
+            currentPlayer = (currentPlayer === 'white') ? 'black' : 'white';
+            
+            if (playerMana[currentPlayer] < MAX_MANA) playerMana[currentPlayer]++;
+            
+            deselectPiece();
+            currentTurnBoardState = null;
+            currentTurnPlayerMana = null;
+            activeSpell = null;
+
+            updateManaUI();
+            updateSpellButtons();
+            
+            // (PERMINTAAN AI) Tampilkan overlay atau picu AI
+            if (isVsAI && currentPlayer === 'black') {
+                triggerAIMove();
+            } else {
+                showTurnOverlay();
+            }
+        }
+
+        function showTurnOverlay() {
+            const playerName = currentPlayer === 'white' ? 'Player 1: Order' : (isVsAI ? 'AI: Chaos' : 'Player 2: Chaos');
+            const color = currentPlayer === 'white' ? 'text-blue-400' : 'text-red-400';
+            
+            turnMessage.textContent = `Giliran ${playerName}`;
+            turnMessage.className = `text-3xl font-bold mb-6 ${color}`;
+            turnOverlay.classList.remove('hidden');
+        }
+
+        startTurnButton.addEventListener('click', async () => {
+            await initAudio();
+            synthClick.triggerAttackRelease('C4', '8n');
+            
+            // --- (PERBAIKAN BUG KRITIS) ---
+            // Logika buff/debuff dipindahkan ke AWAL giliran
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const piece = boardState[r][c];
+                    if (piece) {
+                        // Jika bidak ini milik pemain saat ini (currentPlayer)...
+                        if (piece.color === currentPlayer) {
+                            // Hapus debuff yang dikenakan padanya giliran lalu
+                            if (piece.isPoisoned) piece.isPoisoned = false;
+                            if (piece.isFortified) piece.isFortified = false;
+                        } 
+                        // Jika bidak ini milik lawan...
+                        else {
+                            // Hapus buff yang mereka gunakan giliran lalu
+                            if (piece.isRaged) piece.isRaged = false;
+                            if (piece.isBlessed) piece.isBlessed = false;
+                        }
+                    }
+                }
+            }
+            renderBoard(); // Render ulang untuk hapus VFX setelah debuff hilang
+            // --- AKHIR PERBAIKAN BUG ---
+            
+            historyStateStack.push(JSON.parse(JSON.stringify(boardState)));
+            if (historyStateStack.length > MAX_HISTORY) {
+                historyStateStack.shift(); 
+            }
+            
+            currentTurnBoardState = JSON.parse(JSON.stringify(boardState));
+            currentTurnPlayerMana = JSON.parse(JSON.stringify(playerMana));
+            
+            enPassantTarget = null;
+            
+            turnOverlay.classList.add('hidden');
+            logMessage(`Giliran ${currentPlayer === 'white' ? 'Order' : 'Chaos'} dimulai.`);
+        });
+        
+        function showGameOver(winner) {
+            const winnerName = winner === 'white' ? 'Player 1: Order' : (isVsAI ? 'AI: Chaos' : 'Player 2: Chaos');
+            gameOverMessage.textContent = `${winnerName} Menang!`;
+            gameOverOverlay.classList.remove('hidden');
+        }
+        
+        restartButton.addEventListener('click', async () => {
+            await initAudio();
+            synthClick.triggerAttackRelease('G5', '8n');
+            gameOverOverlay.classList.add('hidden');
+            gameScreen.classList.add('hidden');
+            mainMenuScreen.classList.remove('hidden');
+            isVsAI = false; // Reset mode game
+        });
+
+        // --- Logika Validasi Langkah ---
+
+        function isSquareAttacked(r, c, attackerColor) {
+            const opponentDir = (attackerColor === 'white') ? -1 : 1;
+            if (isInBounds(r - opponentDir, c - 1) && boardState[r - opponentDir][c - 1]?.piece === 'pawn' && boardState[r - opponentDir][c - 1]?.color === attackerColor) return true;
+            if (isInBounds(r - opponentDir, c + 1) && boardState[r - opponentDir][c + 1]?.piece === 'pawn' && boardState[r - opponentDir][c + 1]?.color === attackerColor) return true;
+            const knightOffsets = [[1, 2], [1, -2], [-1, 2], [-1, -2], [2, 1], [2, -1], [-2, 1], [-2, -1]];
+            for (const [dr, dc] of knightOffsets) {
+                const nr = r + dr, nc = c + dc;
+                if (isInBounds(nr, nc) && boardState[nr][nc]?.piece === 'knight' && boardState[nr][nc]?.color === attackerColor) return true;
+            }
+            for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+                if (dr === 0 && dc === 0) continue;
+                const nr = r + dr, nc = c + dc;
+                if (isInBounds(nr, nc) && boardState[nr][nc]?.piece === 'king' && boardState[nr][nc]?.color === attackerColor) return true;
+            }
+            const lineDirections = [
+                { dirs: [[0, 1], [0, -1], [1, 0], [-1, 0]], pieces: ['rook', 'queen'] },
+                { dirs: [[1, 1], [1, -1], [-1, 1], [-1, -1]], pieces: ['bishop', 'queen'] }
+            ];
+            for (const { dirs, pieces } of lineDirections) {
+                for (const [dr, dc] of dirs) {
+                    let nr = r + dr, nc = c + dc;
+                    while (isInBounds(nr, nc)) {
+                        const piece = boardState[nr][nc];
+                        if (piece) {
+                            if (piece.color === attackerColor && pieces.includes(piece.piece)) return true;
+                            break; 
+                        }
+                        nr += dr; nc += dc;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function getValidMoves(r, c) {
+            const piece = boardState[r][c];
+            if (!piece) return [];
+            const moves = [];
+            const color = piece.color;
+            switch (piece.piece) {
+                case 'pawn': moves.push(...getPawnMoves(r, c, color, piece.hasMoved, piece.isEmpowered)); break;
+                case 'rook':
+                    moves.push(...getLineMoves(r, c, [[0, 1], [0, -1], [1, 0], [-1, 0]]));
+                    if (piece.isRaged) moves.push(...getLineMoves(r, c, [[1, 1], [1, -1], [-1, 1], [-1, -1]]));
+                    break;
+                case 'knight': moves.push(...getKnightMoves(r, c)); break;
+                case 'bishop':
+                    moves.push(...getLineMoves(r, c, [[1, 1], [1, -1], [-1, 1], [-1, -1]]));
+                    if (piece.isBlessed) moves.push(...getKingMoves(r, c, color, true)); 
+                    break;
+                case 'queen': moves.push(...getLineMoves(r, c, [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]])); break;
+                case 'king': moves.push(...getKingMoves(r, c, color, piece.hasMoved)); break;
+            }
+            
+            if (activeSpell && activeSpell.id === 'spell-mindcontrol') {
+                return moves.filter(move => {
+                    const target = boardState[move.row][move.col];
+                    return !target || target.color !== 'black'; 
+                });
+            }
+            
+            return moves.filter(move => {
+                const target = boardState[move.row][move.col];
+                return !target || target.color !== piece.color;
+            });
+        }
+        function isOpponent(r, c) { return boardState[r][c] && boardState[r][c].color !== currentPlayer; }
+        function isEmpty(r, c) { return !boardState[r][c]; }
+        function isInBounds(r, c) { return r >= 0 && r < 8 && c >= 0 && c < 8; }
+        
+        function getPawnMoves(r, c, color, hasMoved, isEmpowered) {
+            const moves = []; const dir = (color === 'white') ? -1 : 1;
+            if (isInBounds(r + dir, c) && isEmpty(r + dir, c)) moves.push({ row: r + dir, col: c });
+            const canMoveTwo = (!hasMoved || isEmpowered);
+            if (canMoveTwo && isInBounds(r + 2 * dir, c) && isEmpty(r + 2 * dir, c) && isEmpty(r + dir, c)) moves.push({ row: r + 2 * dir, col: c });
+            if (isInBounds(r + dir, c - 1) && isOpponent(r + dir, c - 1)) moves.push({ row: r + dir, col: c - 1 });
+            if (isInBounds(r + dir, c + 1) && isOpponent(r + dir, c + 1)) moves.push({ row: r + dir, col: c + 1 });
+            if (enPassantTarget && enPassantTarget.opponentColor !== color) {
+                if (r + dir === enPassantTarget.r && Math.abs(c - enPassantTarget.c) === 1) {
+                    if ((color === 'white' && r === 3) || (color === 'black' && r === 4)) {
+                        moves.push({ row: enPassantTarget.r, col: enPassantTarget.c, isEnPassant: true });
+                    }
+                }
+            }
+            return moves;
+        }
+        function getKnightMoves(r, c) {
+            const moves = []; const offsets = [[1, 2], [1, -2], [-1, 2], [-1, -2], [2, 1], [2, -1], [-2, 1], [-2, -1]];
+            for (const [dr, dc] of offsets) if (isInBounds(r + dr, c + dc)) moves.push({ row: r + dr, col: c + dc });
+            return moves;
+        }
+        function getKingMoves(r, c, color, hasMoved) {
+            const moves = [];
+            for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+                if (dr === 0 && dc === 0) continue;
+                if (isInBounds(r + dr, c + dc)) moves.push({ row: r + dr, col: c + dc });
+            }
+            const opponentColor = (color === 'white') ? 'black' : 'white';
+            if (!hasMoved && !isSquareAttacked(r, c, opponentColor)) {
+                if (isEmpty(r, c + 1) && isEmpty(r, c + 2) && boardState[r][c + 3]?.piece === 'rook' && !boardState[r][c + 3].hasMoved) {
+                    if (!isSquareAttacked(r, c + 1, opponentColor) && !isSquareAttacked(r, c + 2, opponentColor)) {
+                        moves.push({ row: r, col: c + 2, isCastling: true });
+                    }
+                }
+                if (isEmpty(r, c - 1) && isEmpty(r, c - 2) && isEmpty(r, c - 3) && boardState[r][c - 4]?.piece === 'rook' && !boardState[r][c - 4].hasMoved) {
+                     if (!isSquareAttacked(r, c - 1, opponentColor) && !isSquareAttacked(r, c - 2, opponentColor)) {
+                        moves.push({ row: r, col: c - 2, isCastling: true });
+                    }
+                }
+            }
+            return moves;
+        }
+        function getLineMoves(r, c, directions) {
+            const moves = [];
+            for (const [dr, dc] of directions) {
+                let nr = r + dr, nc = c + dc;
+                while (isInBounds(nr, nc)) {
+                    if (isEmpty(nr, nc)) moves.push({ row: nr, col: nc });
+                    else if (isOpponent(nr, nc)) { moves.push({ row: nr, col: nc }); break; } 
+                    else break;
+                    nr += dr; nc += dc;
+                }
+            }
+            return moves;
+        }
+
+        // --- Logika Spell ---
+
+        async function handleSpellButtonClick(button, spell) {
+            await initAudio();
+            const spellId = spell.id;
+            
+            if (activeSpell && activeSpell.id === spellId) {
+                logMessage("Spell dibatalkan.");
+                activeSpell = null; spellState = {};
+                button.classList.remove('active-spell');
+                deselectPiece();
+                synthClick.triggerAttackRelease('C4', '8n');
+                return;
+            }
+            
+            if (activeSpell) {
+                const oldPlayerHand = (currentPlayer === 'white') ? playerHands.white : playerHands.black;
+                const oldHandIndex = oldPlayerHand.indexOf(activeSpell.id);
+                if (oldHandIndex > -1) {
+                    const oldBtn = document.querySelector(`.spell-button[data-player="${currentPlayer}"][data-hand-index="${oldHandIndex}"]`);
+                    if (oldBtn) oldBtn.classList.remove('active-spell');
+                }
+            }
+            
+            activeSpell = spell;
+            spellState = {};
+            button.classList.add('active-spell');
+            deselectPiece();
+            synthClick.triggerAttackRelease('E4', '8n');
+            
+            let spellUsed = false;
+            
+            switch(spellId) {
+                // (PERBAIKAN BUG) Spell Instan & Pasif
+                case 'spell-midas':
+                case 'spell-decay':
+                    logMessage(`Spell pasif '${spell.name}' sudah aktif.`);
+                    activeSpell = null; button.classList.remove('active-spell');
+                    break;
+                case 'spell-timewarp': 
+                    if (playerMana[currentPlayer] >= spell.cost && historyStateStack.length > 0) {
+                        if (!turnInProgress) { 
+                            currentTurnBoardState = JSON.parse(JSON.stringify(boardState));
+                            currentTurnPlayerMana = JSON.parse(JSON.stringify(playerMana));
+                        }
+                        
+                        boardState = JSON.parse(JSON.stringify(historyStateStack.pop())); 
+                        
+                        spellUsed = true;
+                        logMessage("Time Warp! Giliran lawan telah dibatalkan!");
+                        synthTimeWarp.triggerAttackRelease('C3', '1n');
+                        playerMana[currentPlayer] -= spell.cost;
+                        spellUsedThisTurn = activeSpell.id; 
+                        showConfirmUI(); 
+                    } else {
+                        logMessage("Tidak bisa Time Warp (Mana/History tidak cukup)!");
+                        activeSpell = null;
+                        button.classList.remove('active-spell');
+                    }
+                    break;
+
+                // Spell Targetted
+                case 'spell-sacrifice': logMessage("Pilih 1 Pawn (Chaos) untuk dikorbankan."); break;
+                case 'spell-fortify': logMessage("Pilih 1 bidak (Order) untuk di-Fortify."); break;
+                case 'spell-swap': logMessage("Pilih bidak pertama (non-Raja) yg sdh gerak."); spellState.firstPiece = null; break;
+                case 'spell-empower': logMessage("Pilih 1 Pawn (Order) untuk di-Empower."); break;
+                case 'spell-blink': logMessage("Pilih 1 bidak (Chaos) untuk Blink."); spellState.pieceToBlink = null; break;
+                case 'spell-poison': logMessage("Pilih 1 bidak lawan (Order) untuk di-Poison."); break;
+                case 'spell-heal': logMessage("Pilih 1 bidak (Order) untuk disembuhkan."); break;
+                case 'spell-teleport': logMessage("Pilih Raja (Order) untuk Teleport."); spellState.firstPiece = null; break;
+                case 'spell-fear': logMessage("Pilih 1 bidak lawan (non-Raja) untuk didorong."); break;
+                case 'spell-rage': logMessage("Pilih 1 Benteng (Chaos) untuk di-Rage."); break;
+                case 'spell-pact': logMessage("Pilih 1 Gajah (Chaos) untuk ditukar."); spellState.firstPiece = null; break;
+                
+                case 'spell-recall': logMessage("Pilih 1 bidak teman (non-Raja) untuk di-Recall."); break;
+                case 'spell-bless': logMessage("Pilih 1 Gajah (Order) untuk di-Bless."); break;
+                case 'spell-meteor': logMessage("Pilih 1 bidak lawan (non-Raja) untuk dihancurkan."); break;
+                case 'spell-mindcontrol': logMessage("Pilih 1 bidak lawan (non-Raja) untuk digerakkan."); spellState.pieceToControl = null; break;
+                case 'spell-vortex': logMessage("Pilih 1 bidak lawan (non-Raja) untuk ditarik."); break;
+                
+                case 'spell-shieldwall':
+                    if (playerMana[currentPlayer] >= spell.cost) {
+                         if (!turnInProgress) {
+                            currentTurnBoardState = JSON.parse(JSON.stringify(boardState));
+                            currentTurnPlayerMana = JSON.parse(JSON.stringify(playerMana));
+                         }
+                        let fortifiedCount = 0;
+                        for(let c = 0; c < 8; c++) {
+                            const piece = boardState[6][c]; 
+                            if (piece && piece.piece === 'pawn' && piece.color === 'white') {
+                                piece.isFortified = true;
+                                fortifiedCount++;
+                            }
+                        }
+                        if (fortifiedCount > 0) {
+                            spellUsed = true;
+                            logMessage(`Shield Wall aktif! ${fortifiedCount} Pawn dilindungi.`);
+                            playerMana[currentPlayer] -= spell.cost;
+                            synthFortify.triggerAttackRelease('C4', '2n');
+                            spellUsedThisTurn = activeSpell.id; 
+                            showConfirmUI();
+                        } else {
+                            logMessage("Tidak ada Pawn di baris awal untuk dilindungi.");
+                            activeSpell = null;
+                        }
+                    }
+                    break;
+            }
+            
+            if (spellUsed) {
+                activeSpell = null;
+                updateManaUI();
+                updateSpellButtons();
+                renderBoard();
+            }
+        }
+
+        async function handleSpellClick(r, c) {
+            await initAudio(); 
+            
+            if (!turnInProgress) {
+                currentTurnBoardState = JSON.parse(JSON.stringify(boardState));
+                currentTurnPlayerMana = JSON.parse(JSON.stringify(playerMana));
+            }
+            
+            const piece = boardState[r][c];
+            const cost = activeSpell.cost;
+
+            if (playerMana[currentPlayer] < cost) {
+                logMessage("Mana tidak cukup!");
+                activeSpell = null; updateSpellButtons(); return;
+            }
+            
+            let spellUsed = false;
+            let spellEndsTurn = false;
+            
+            switch (activeSpell.id) {
+                // --- Spell Order ---
+                case 'spell-fortify':
+                    if (piece && piece.color === 'white') {
+                        piece.isFortified = true; spellUsed = true;
+                        logMessage(`Bidak ${piece.piece} di (${r},${c}) telah di-Fortify!`);
+                        synthFortify.triggerAttackRelease('C5', '8n');
+                    } else logMessage("Harus memilih bidak Order!");
+                    break;
+                case 'spell-swap':
+                    if (!piece || piece.color !== 'white' || piece.piece === 'king' || !piece.hasMoved) {
+                         logMessage("Harus memilih bidak Order (non-Raja) YANG SUDAH BERGERAK!"); break;
+                    }
+                    if (!spellState.firstPiece) {
+                        spellState.firstPiece = { piece, r, c };
+                        logMessage(`Bidak ${piece.piece} dipilih. Pilih bidak kedua (yg sdh gerak).`);
+                        document.querySelector(`[data-row="${r}"][data-col="${c}"]`).classList.add('selected-piece');
+                    } else {
+                        const first = spellState.firstPiece;
+                        if (first.r === r && first.c === c) {
+                             logMessage("Batal pilih bidak pertama.");
+                             spellState.firstPiece = null; renderBoard(); break;
+                        }
+                        if (!piece.hasMoved) {
+                            logMessage("Bidak kedua juga HARUS SUDAH BERGERAK!"); break;
+                        }
+                        boardState[r][c] = first.piece;
+                        boardState[first.r][first.c] = piece;
+                        spellUsed = true;
+                        logMessage(`Menukar ${first.piece.piece} dengan ${piece.piece}!`);
+                    }
+                    break;
+                case 'spell-empower':
+                    if (piece && piece.color === 'white' && piece.piece === 'pawn') {
+                        piece.isEmpowered = true; spellUsed = true;
+                        logMessage(`Pawn di (${r},${c}) telah di-Empower!`);
+                    } else logMessage("Harus memilih Pawn (Order)!");
+                    break;
+                case 'spell-heal':
+                    if (piece && piece.color === 'white' && piece.isPoisoned) {
+                        piece.isPoisoned = false; spellUsed = true;
+                        logMessage(`Bidak ${piece.piece} telah disembuhkan dari Poison!`);
+                    } else logMessage("Pilih bidak Order yang sedang Poisoned!");
+                    break;
+                case 'spell-teleport':
+                    if (!spellState.firstPiece) {
+                        if (piece && piece.color === 'white' && piece.piece === 'king') {
+                            spellState.firstPiece = { piece, r, c };
+                            logMessage("Raja dipilih. Sekarang pilih Benteng (Rook).");
+                            document.querySelector(`[data-row="${r}"][data-col="${c}"]`).classList.add('selected-piece');
+                        } else logMessage("Harus pilih Raja dulu!");
+                    } else {
+                        if (piece && piece.color === 'white' && piece.piece === 'rook') {
+                            const king = spellState.firstPiece;
+                            boardState[r][c] = king.piece;
+                            boardState[king.r][king.c] = piece;
+                            spellUsed = true;
+                            logMessage("Raja dan Benteng bertukar tempat!");
+                        } else logMessage("Harus pilih Benteng (Rook)!");
+                    }
+                    break;
+                case 'spell-recall':
+                    if (piece && piece.color === 'white' && piece.piece !== 'king') {
+                        const initialRow = (piece.piece === 'pawn') ? 6 : 7;
+                        let initialCol = -1;
+                        for (let c_init = 0; c_init < 8; c_init++) {
+                            const initialPieceCode = initialBoardSetup[initialRow][c_init];
+                            if (initialPieceCode.toLowerCase() === piece.piece.charAt(0)) {
+                                if (isEmpty(initialRow, c_init)) { 
+                                    initialCol = c_init;
+                                    break;
+                                }
+                            }
+                        }
+                        if (initialCol !== -1) {
+                            boardState[r][c] = null; 
+                            boardState[initialRow][initialCol] = piece; 
+                            piece.hasMoved = false; 
+                            spellUsed = true;
+                            logMessage(`${piece.piece} di-Recall ke (${initialRow},${initialCol})!`);
+                        } else logMessage("Posisi awal bidak penuh!");
+                    } else logMessage("Harus memilih bidak teman (non-Raja)!");
+                    break;
+                case 'spell-bless':
+                    if (piece && piece.color === 'white' && piece.piece === 'bishop') {
+                        piece.isBlessed = true; 
+                        spellUsed = true;
+                        logMessage(`Gajah di (${r},${c}) di-Bless!`);
+                    } else logMessage("Harus memilih Gajah (Order)!");
+                    break;
+
+                // --- Spell Chaos ---
+                case 'spell-blink':
+                    if (!spellState.pieceToBlink) {
+                        if (piece && piece.color === 'black') {
+                            spellState.pieceToBlink = { piece, r, c };
+                            logMessage(`Pilih ${piece.piece}. Sekarang pilih kotak kosong di sebelahnya.`);
+                            document.querySelector(`[data-row="${r}"][data-col="${c}"]`).classList.add('selected-piece');
+                        } else logMessage("Harus memilih bidak Chaos!");
+                    } else {
+                        const { piece: pieceToMove, r: fromR, c: fromC } = spellState.pieceToBlink;
+                        const isAdjacent = Math.abs(r - fromR) <= 1 && Math.abs(c - fromC) <= 1;
+                        const isSelf = (r === fromR && c === fromC);
+                        
+                        if (!isSelf && isEmpty(r, c) && isAdjacent) {
+                            boardState[r][c] = pieceToMove;
+                            boardState[fromR][fromC] = null;
+                            spellUsed = true; spellEndsTurn = true;
+                            logMessage(`Blink! ${pieceToMove.piece} pindah ke (${r},${c}).`);
+                        } else logMessage("Tujuan tidak valid! Harus kotak kosong di sebelahnya.");
+                    }
+                    break;
+                case 'spell-poison':
+                    if (piece && piece.color === 'white') {
+                        piece.isPoisoned = true; spellUsed = true;
+                        logMessage(`Bidak ${piece.piece} di (${r},${c}) telah di-Poison!`);
+                        synthPoison.triggerAttackRelease('0.5n');
+                    } else logMessage("Harus memilih bidak lawan (Order)!");
+                    break;
+                case 'spell-sacrifice':
+                    if (piece && piece.color === 'black' && piece.piece === 'pawn') {
+                        boardState[r][c] = null;
+                        playerMana.black = Math.min(MAX_MANA, playerMana.black - cost + 4);
+                        spellUsed = true;
+                        logMessage(`Pawn di (${r},${c}) dikorbankan. Dapat 4 Mana.`);
+                        updateManaUI(); 
+                    } else logMessage("Harus memilih Pawn (Chaos)!");
+                    break;
+                case 'spell-fear':
+                    if (piece && piece.color === 'white' && piece.piece !== 'king') {
+                        const dir = 1; 
+                        const targetRow = r + dir;
+                        if (isInBounds(targetRow, c) && isEmpty(targetRow, c)) {
+                            boardState[targetRow][c] = piece;
+                            boardState[r][c] = null;
+                            spellUsed = true;
+                            logMessage(`Bidak ${piece.piece} didorong mundur ke (${targetRow},${c})!`);
+                        } else logMessage("Tidak bisa mendorong bidak, kotak di belakangnya terisi!");
+                    } else logMessage("Harus memilih bidak lawan (non-Raja)!");
+                    break;
+                case 'spell-rage':
+                     if (piece && piece.color === 'black' && piece.piece === 'rook') {
+                        piece.isRaged = true; spellUsed = true;
+                        logMessage(`Benteng di (${r},${c}) mendapat Rage!`);
+                        synthRage.triggerAttackRelease('C3', '1n');
+                    } else logMessage("Harus memilih Benteng (Chaos)!");
+                    break;
+                case 'spell-pact':
+                     if (!spellState.firstPiece) {
+                        if (piece && piece.color === 'black' && piece.piece === 'bishop') {
+                            spellState.firstPiece = { piece, r, c };
+                            logMessage("Gajah dipilih. Sekarang pilih Benteng (Rook).");
+                            document.querySelector(`[data-row="${r}"][data-col="${c}"]`).classList.add('selected-piece');
+                        } else logMessage("Harus pilih Gajah (Bishop) dulu!");
+                    } else {
+                        if (piece && piece.color === 'black' && piece.piece === 'rook') {
+                            const bishop = spellState.firstPiece;
+                            boardState[r][c] = bishop.piece;
+                            boardState[bishop.r][bishop.c] = piece;
+                            spellUsed = true;
+                            logMessage("Gajah dan Benteng bertukar tempat!");
+                        } else logMessage("Harus pilih Benteng (Rook)!");
+                    }
+                    break;
+                case 'spell-meteor':
+                    if (piece && piece.color === 'white' && piece.piece !== 'king') {
+                        boardState[r][c] = null; 
+                        spellUsed = true;
+                        logMessage(`Meteor menghancurkan ${piece.piece} di (${r},${c})!`);
+                        synthMeteor.triggerAttackRelease('C2', '1n');
+                    } else logMessage("Harus memilih bidak lawan (non-Raja)!");
+                    break;
+                case 'spell-mindcontrol':
+                    if (!spellState.pieceToControl) {
+                        if (piece && piece.color === 'white' && piece.piece !== 'king') {
+                            spellState.pieceToControl = { piece, r, c };
+                            logMessage(`Bidak ${piece.piece} dikendalikan. Pilih tujuan.`);
+                            
+                            currentPlayer = 'white'; 
+                            validMoves = getValidMoves(r, c);
+                            currentPlayer = 'black'; 
+                            
+                            renderBoard(); 
+                        } else logMessage("Harus memilih bidak lawan (non-Raja)!");
+                    } else {
+                        const { piece: pieceToMove, r: fromR, c: fromC } = spellState.pieceToControl;
+                        
+                        currentPlayer = 'white'; 
+                        const moves = getValidMoves(fromR, fromC);
+                        currentPlayer = 'black';
+                        
+                        const move = moves.find(m => m.row === r && m.col === c);
+                        
+                        if (move) {
+                            const captured = boardState[r][c];
+                            if (captured && captured.color === 'black') {
+                                 logMessage("Mind Control gagal, tidak bisa makan bidak sendiri!");
+                                 break;
+                            }
+                            
+                            boardState[r][c] = pieceToMove;
+                            boardState[fromR][fromC] = null;
+                            spellUsed = true;
+                            spellEndsTurn = true; 
+                            logMessage(`Bidak lawan ${pieceToMove.piece} dipindahkan ke (${r},${c})!`);
+                        } else logMessage("Tujuan tidak valid untuk bidak yang dikendalikan.");
+                    }
+                    break;
+                case 'spell-vortex':
+                    if (piece && piece.color === 'white' && piece.piece !== 'king') {
+                        const targetRow = r + 1; 
+                        if (isInBounds(targetRow, c) && isEmpty(targetRow, c)) {
+                            boardState[targetRow][c] = piece;
+                            boardState[r][c] = null;
+                            spellUsed = true;
+                            logMessage(`Vortex menarik ${piece.piece} ke (${targetRow},${c})!`);
+                        } else logMessage("Tidak bisa menarik, kotak di depannya terisi!");
+                    } else logMessage("Harus memilih bidak lawan (non-Raja)!");
+                    break;
+            }
+
+            // --- Logika Penyelesaian Spell ---
+            if (spellUsed) {
+                spellUsedThisTurn = activeSpell.id; 
+                
+                if (activeSpell.id !== 'spell-sacrifice') {
+                    playerMana[currentPlayer] -= cost;
+                }
+            }
+            
+            const isSpellFinished = spellUsed || 
+               (!['spell-swap', 'spell-blink', 'spell-teleport', 'spell-pact', 'spell-mindcontrol'].includes(activeSpell.id)) ||
+               (activeSpell.id === 'spell-swap' && spellUsed) ||
+               (activeSpell.id === 'spell-blink' && spellUsed) ||
+               (activeSpell.id === 'spell-teleport' && spellUsed) ||
+               (activeSpell.id === 'spell-pact' && spellUsed) ||
+               (activeSpell.id === 'spell-mindcontrol' && spellUsed);
+               
+            if (isSpellFinished) {
+                if (activeSpell) {
+                    const playerHand = (currentPlayer === 'white') ? playerHands.white : playerHands.black;
+                    const handIndex = playerHand.indexOf(activeSpell.id);
+                    if (handIndex > -1) {
+                        const activeBtn = document.querySelector(`.spell-button[data-player="${currentPlayer}"][data-hand-index="${handIndex}"]`);
+                        if (activeBtn) activeBtn.classList.remove('active-spell');
+                    }
+                }
+                
+                activeSpell = null;
+                spellState = {};
+                
+                showConfirmUI(); 
+                
+                updateManaUI();
+                updateSpellButtons();
+                renderBoard();
+                
+                if (spellEndsTurn) {
+                    logMessage("Giliran berakhir karena Mind Control/Blink.");
+                }
+            }
+        }
+        
+        // --- (PERMINTAAN AI) Engine Minimax ---
+        
+        function findBestMove() {
+            let bestScore = -Infinity;
+            let bestMove = null;
+            const allMoves = getAllPossibleMoves('black');
+            shuffleArray(allMoves); // Tambah variasi
+
+            for (const move of allMoves) {
+                // 1. Lakukan Gerakan
+                const fromPiece = boardState[move.fromR][move.fromC];
+                const toPiece = boardState[move.toR][move.toC];
+                boardState[move.toR][move.toC] = fromPiece;
+                boardState[move.fromR][move.fromC] = null;
+
+                // 2. Evaluasi
+                let score = minimax(aiDifficulty - 1, false, -Infinity, Infinity);
+                
+                // 3. Batalkan Gerakan
+                boardState[move.fromR][move.fromC] = fromPiece;
+                boardState[move.toR][move.toC] = toPiece;
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMove = { fromR: move.fromR, fromC: move.fromC, toR: move.toR, toC: move.toC, move: move.move };
+                }
+            }
+            return bestMove;
+        }
+
+        function minimax(depth, isMaximizing, alpha, beta) {
+            if (depth === 0) {
+                return evaluateBoard();
+            }
+            
+            const playerColor = isMaximizing ? 'black' : 'white';
+            const allMoves = getAllPossibleMoves(playerColor);
+
+            if (isMaximizing) {
+                let maxScore = -Infinity;
+                for (const move of allMoves) {
+                    const fromPiece = boardState[move.fromR][move.fromC];
+                    const toPiece = boardState[move.toR][move.toC];
+                    boardState[move.toR][move.toC] = fromPiece;
+                    boardState[move.fromR][move.fromC] = null;
+
+                    let score = minimax(depth - 1, false, alpha, beta);
+
+                    boardState[move.fromR][move.fromC] = fromPiece;
+                    boardState[move.toR][move.toC] = toPiece;
+
+                    maxScore = Math.max(maxScore, score);
+                    alpha = Math.max(alpha, score);
+                    if (beta <= alpha) break;
+                }
+                return maxScore;
+            } else { // Minimizing (White's turn)
+                let minScore = Infinity;
+                for (const move of allMoves) {
+                    const fromPiece = boardState[move.fromR][move.fromC];
+                    const toPiece = boardState[move.toR][move.toC];
+                    boardState[move.toR][move.toC] = fromPiece;
+                    boardState[move.fromR][move.fromC] = null;
+
+                    let score = minimax(depth - 1, true, alpha, beta);
+
+                    boardState[move.fromR][move.fromC] = fromPiece;
+                    boardState[move.toR][move.toC] = toPiece;
+
+                    minScore = Math.min(minScore, score);
+                    beta = Math.min(beta, score);
+                    if (beta <= alpha) break;
+                }
+                return minScore;
+            }
+        }
+        
+        function evaluateBoard() {
+            let totalScore = 0;
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const piece = boardState[r][c];
+                    if (piece) {
+                        const value = pieceValues[piece.piece] || 0;
+                        totalScore += (piece.color === 'black' ? value : -value);
+                    }
+                }
+            }
+            return totalScore;
+        }
+        
+        function getAllPossibleMoves(color) {
+            const moves = [];
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const piece = boardState[r][c];
+                    if (piece && piece.color === color) {
+                        // (PERBAIKAN BUG) Simulasikan giliran untuk getValidMoves
+                        const originalPlayer = currentPlayer;
+                        currentPlayer = color;
+                        const valid = getValidMoves(r, c);
+                        currentPlayer = originalPlayer;
+                        
+                        for (const move of valid) {
+                            moves.push({ fromR: r, fromC: c, toR: move.row, toC: move.col, move: move });
+                        }
+                    }
+                }
+            }
+            return moves;
+        }
+        
+    </script>
+</body>
+</html>
