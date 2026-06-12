@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Kuis Kelas X-1</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Righteous&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        .card { background: rgba(30, 41, 59, 0.8); border-radius: 1.5rem; border: 1px solid rgba(71, 85, 105, 0.5); box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.5); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        .page { display: none; opacity: 0; transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out; }
+        .page.active { display: flex; opacity: 1; transform: scale(1); }
+        .btn { transition: all 0.2s ease-in-out; }
+        .btn:hover:not(:disabled) { transform: translateY(-3px) scale(1.05); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.2), 0 4px 6px -4px rgb(0 0 0 / 0.1); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-option:hover:not(:disabled) { transform: translateY(-3px); border-color: #f59e0b; color: #fefce8; }
+        .correct { animation: tada 0.8s; background-color: #166534 !important; color: white !important; border-color: #22c55e !important; box-shadow: 0 0 20px rgba(34, 197, 94, 0.6); }
+        .incorrect { background-color: #991b1b !important; color: white !important; border-color: #ef4444 !important; }
+        .quiz-card.shake { animation: shake 0.5s; }
+        .animated-logo { font-family: 'Righteous', cursive; animation: glowing 3s infinite ease-in-out; }
+        @keyframes glowing { 0% { text-shadow: 0 0 5px #fde047, 0 0 10px #fde047, 0 0 15px #f59e0b; } 50% { text-shadow: 0 0 10px #fde047, 0 0 20px #f59e0b, 0 0 30px #d97706; } 100% { text-shadow: 0 0 5px #fde047, 0 0 10px #fde047, 0 0 15px #f59e0b; } }
+        @keyframes tada { 0% {transform: scale(1);} 10%, 20% {transform: scale(0.9) rotate(-3deg);} 30%, 50%, 70%, 90% {transform: scale(1.1) rotate(3deg);} 40%, 60%, 80% {transform: scale(1.1) rotate(-3deg);} 100% {transform: scale(1) rotate(0);} }
+        @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
+        body::before { content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.05) 1px, transparent 0); background-size: 25px 25px; z-index: -1; opacity: 0.5; }
+        .toggle-label { transition: background-color .2s ease-in-out; }
+        .toggle-checkbox { transition: transform .2s ease-in-out; }
+        .toggle-checkbox:checked { transform: translateX(1.25rem); border-color: #fcd34d; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #f59e0b; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-200 min-h-screen flex items-center justify-center p-4">
+
+    <!-- Halaman Menu -->
+    <div id="menu-page" class="page active flex-col items-center justify-center card w-full max-w-md mx-auto p-8 text-center">
+        <h1 class="animated-logo text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-amber-500 mb-2">Kelas X-1</h1>
+        <p class="text-slate-400 mb-10">Game Kuis "Siapakah Aku?"</p>
+        <div class="space-y-4 w-full">
+            <button data-action="start" class="btn menu-btn w-full bg-amber-500 text-slate-900 font-bold py-3 px-6 rounded-full text-lg">Mulai Kuis</button>
+            <button data-action="leaderboard" class="btn menu-btn w-full bg-slate-700 text-amber-400 font-bold py-3 px-6 rounded-full text-lg">Papan Skor</button>
+            <button data-action="about" class="btn menu-btn w-full bg-slate-700 text-amber-400 font-bold py-3 px-6 rounded-full text-lg">Tentang Game</button>
+            <button data-action="settings" class="btn menu-btn w-full bg-slate-700 text-amber-400 font-bold py-3 px-6 rounded-full text-lg">Pengaturan</button>
+        </div>
+    </div>
+    
+    <!-- Halaman Kuis -->
+    <div id="quiz-page" class="page hidden flex-col items-center justify-center card quiz-card w-full max-w-2xl mx-auto p-6 md:p-8">
+        <div class="flex justify-between items-center mb-4 w-full"><p id="question-counter" class="text-slate-300 font-semibold"></p><div class="flex items-center space-x-2 text-amber-400 font-bold"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><span id="timer-text">60</span></div><p id="score" class="text-amber-400 font-semibold">Skor: 0</p></div>
+        <div class="mb-6 w-full"><p id="question-text" class="text-center text-lg text-slate-300 leading-relaxed min-h-[100px] flex items-center justify-center"></p></div>
+        <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full"></div>
+        <div class="mt-8 text-center"><button id="next-btn" class="hidden btn bg-amber-500 text-slate-900 font-bold py-3 px-8 rounded-full">Lanjut</button></div>
+    </div>
+    
+    <!-- Halaman Hasil -->
+    <div id="result-page" class="page hidden flex-col items-center justify-center card w-full max-w-md mx-auto p-8 text-center">
+        <h2 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-amber-500 mb-4">Kuis Selesai!</h2>
+        <p class="text-slate-300 mb-2 text-lg">Skor Akhir Kamu:</p><p id="final-score" class="text-6xl font-bold text-amber-400 my-2">0</p>
+        <p id="feedback-message" class="text-slate-400 mt-4 min-h-[4rem] text-center"></p>
+        <div class="my-6 w-full"><input type="text" id="name-input" placeholder="Masukkan namamu..." class="w-full bg-slate-700 border-2 border-slate-600 rounded-full px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:border-amber-500"><button id="save-score-btn" class="btn w-full mt-3 bg-amber-500 text-slate-900 font-bold py-3 px-6 rounded-full">Simpan Skor</button></div>
+        <button id="restart-btn" class="btn w-full mt-2 bg-slate-700 text-amber-400 font-bold py-3 px-6 rounded-full">Main Lagi</button>
+        <button id="back-to-menu-result-btn" class="btn w-full mt-2 bg-slate-800 text-slate-300 font-bold py-2 px-6 rounded-full text-sm">Kembali ke Menu</button>
+    </div>
+
+    <!-- Halaman Papan Skor, Pengaturan, & Tentang -->
+    <div id="leaderboard-page" class="page hidden flex-col items-center justify-center card w-full max-w-md mx-auto p-8 text-center">
+        <h2 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-amber-500 mb-6">Papan Skor</h2>
+        <div id="leaderboard-list" class="space-y-3 text-left max-h-96 overflow-y-auto w-full"><p class="text-center text-slate-400">Memuat skor...</p></div>
+        <button id="back-to-menu-leaderboard-btn" class="btn w-full mt-6 bg-slate-700 text-amber-400 font-bold py-3 px-6 rounded-full">Kembali</button>
+    </div>
+    <div id="settings-page" class="page hidden flex-col items-center justify-center card w-full max-w-md mx-auto p-8">
+        <h2 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-amber-500 mb-8 text-center">Pengaturan</h2>
+        <div class="space-y-6 w-full"><div class="flex items-center justify-between"><span class="text-lg font-semibold text-slate-300">Musik Latar</span><div class="relative inline-block w-12 mr-2 align-middle select-none"><input type="checkbox" id="music-toggle" class="toggle-checkbox absolute block w-7 h-7 rounded-full bg-white border-4 appearance-none cursor-pointer border-slate-600"/><label for="music-toggle" class="toggle-label block overflow-hidden h-7 rounded-full bg-slate-600 cursor-pointer"></label></div></div><div class="flex items-center justify-between"><span class="text-lg font-semibold text-slate-300">Efek Suara (SFX)</span><div class="relative inline-block w-12 mr-2 align-middle select-none"><input type="checkbox" id="sfx-toggle" class="toggle-checkbox absolute block w-7 h-7 rounded-full bg-white border-4 appearance-none cursor-pointer border-slate-600"/><label for="sfx-toggle" class="toggle-label block overflow-hidden h-7 rounded-full bg-slate-600 cursor-pointer"></label></div></div></div>
+        <button id="back-to-menu-settings-btn" class="btn w-full mt-10 bg-slate-700 text-amber-400 font-bold py-3 px-6 rounded-full">Kembali</button>
+    </div>
+    <div id="about-page" class="page hidden flex-col card w-full max-w-md mx-auto p-8 text-left">
+        <h2 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-amber-500 mb-6 text-center">Tentang Game</h2>
+        <div class="space-y-6 text-slate-300 flex-grow"><h3 class="font-semibold text-amber-400 mb-2">Deskripsi</h3><p class="text-sm leading-relaxed">"Siapakah Aku?" adalah game kuis yang dibuat khusus untuk menguji seberapa dalam kamu mengenal teman-teman sekelasmu di X-1. Setiap pertanyaan adalah sebuah teka-teki unik tentang salah satu anggota kelas. Jawab dengan cepat dan benar untuk meraih skor tertinggi dan buktikan bahwa kamulah yang paling solid!</p><div><h3 class="font-semibold text-amber-400 mb-3">Sosial Media Kelas</h3><a href="https://www.instagram.com/x1mo.mentz?igsh=cHR4M2NyZDE3ODNz" target="_blank" class="btn flex items-center justify-center space-x-3 w-full bg-slate-700 p-3 rounded-full"><svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.85s-.011 3.584-.069 4.85c-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07s-3.584-.012-4.85-.07c-3.252-.148-4.771-1.691-4.919-4.919-.058-1.265-.069-1.645-.069-4.85s.011-3.584.069-4.85c.149-3.225 1.664-4.771 4.919-4.919C8.416 2.175 8.796 2.163 12 2.163zm0 1.441c-3.171 0-3.543.012-4.782.069-2.76.127-4.004 1.369-4.131 4.131-.057 1.239-.069 1.618-.069 4.782s.012 3.543.069 4.782c.127 2.76 1.37 4.004 4.131 4.131 1.239.057 1.618.069 4.782.069s3.543-.012 4.782-.069c2.76-.127 4.004-1.369 4.131-4.131.057-1.239.069-1.618.069-4.782s-.012-3.543-.069-4.782c-.127-2.76-1.37-4.004-4.131-4.131-1.239-.057-1.618-.069-4.782-.069zm0 3.192c-2.702 0-4.887 2.185-4.887 4.887s2.185 4.887 4.887 4.887 4.887-2.185 4.887-4.887-2.185-4.887-4.887-4.887zm0 7.974c-1.701 0-3.087-1.386-3.087-3.087s1.386-3.087 3.087-3.087 3.087 1.386 3.087 3.087-1.386 3.087-3.087 3.087zm4.908-7.917c-.604 0-1.092.488-1.092 1.092s.488 1.092 1.092 1.092 1.092-.488 1.092-1.092-.488-1.092-1.092-1.092z"/></svg><span>x1mo.mentz</span></a></div><div><h3 class="font-semibold text-amber-400 mb-3">Kreator Game</h3><div class="flex flex-col sm:flex-row gap-3"><a href="https://www.instagram.com/kaltimff_store?igsh=bWlzeHpiZ281djN4" target="_blank" class="btn flex items-center justify-center space-x-3 w-full bg-slate-700 p-3 rounded-full"><svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.85s-.011 3.584-.069 4.85c-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07s-3.584-.012-4.85-.07c-3.252-.148-4.771-1.691-4.919-4.919-.058-1.265-.069-1.645-.069-4.85s.011-3.584.069-4.85c.149-3.225 1.664-4.771 4.919-4.919C8.416 2.175 8.796 2.163 12 2.163zm0 1.441c-3.171 0-3.543.012-4.782.069-2.76.127-4.004 1.369-4.131 4.131-.057 1.239-.069 1.618-.069 4.782s.012 3.543.069 4.782c.127 2.76 1.37 4.004 4.131 4.131 1.239.057 1.618.069 4.782.069s3.543-.012 4.782-.069c2.76-.127 4.004-1.369 4.131-4.131.057-1.239.069-1.618.069-4.782s-.012-3.543-.069-4.782c-.127-2.76-1.37-4.004-4.131-4.131-1.239-.057-1.618-.069-4.782-.069zm0 3.192c-2.702 0-4.887 2.185-4.887 4.887s2.185 4.887 4.887 4.887 4.887-2.185 4.887-4.887-2.185-4.887-4.887-4.887zm0 7.974c-1.701 0-3.087-1.386-3.087-3.087s1.386-3.087 3.087-3.087 3.087 1.386 3.087 3.087-1.386 3.087-3.087 3.087zm4.908-7.917c-.604 0-1.092.488-1.092 1.092s.488 1.092 1.092 1.092 1.092-.488 1.092-1.092-.488-1.092-1.092-1.092z"/></svg><span>kaltimff_store</span></a><a href="https://wa.me/message/JNJFBTFD773MB1" target="_blank" class="btn flex items-center justify-center space-x-3 w-full bg-slate-700 p-3 rounded-full"><svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.894 11.892-1.99 0-3.903-.52-5.586-1.456l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.886-.001 2.267.655 4.398 1.803 6.182l-.341 1.236 1.224-.356z"/></svg><span>WhatsApp</span></a></div></div></div>
+        <button id="back-to-menu-about-btn" class="btn w-full mt-10 bg-slate-700 text-amber-400 font-bold py-3 px-6 rounded-full">Kembali</button>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        const quizData = [{"clue":"Aku adalah nakhoda di bahtera kelas ini, mengarahkan tanpa perlu terdaftar sebagai penumpang. Namaku diawali oleh sebuah lengkungan penuh inspirasi, simbol dari kebijaksanaan.","options":["Pak Budi, S.Pd","Pak Saifun Fikri, S. Pd","Pak Sabar, S.Pd","Pak Junaedi, S.Pd"],"answer":"Pak Saifun Fikri, S. Pd"},{"clue":"Dalam namaku terkandung esensi bulan kesembilan dalam kalender Hijriah, sebuah periode suci yang dinantikan umat.","options":["ALDI FIRMANSYAH","BARNOTO ADI PRATAMA","AIDY SEPTIAN RAMADAN","DAVI ANGGARA"],"answer":"AIDY SEPTIAN RAMADAN"},{"clue":"Inisial ganda 'P' menjadi ciri khas dalam identitasku, sepasang permata yang menghiasi nama seorang perempuan.","options":["ALUNA SAGITA RAMADHANI","KENSYA PUTRI SYAFARA","AIRA PUTRI PRATIWI","VEDA YANTI AULIA PUTRI"],"answer":"AIRA PUTRI PRATIWI"},{"clue":"Aku adalah sosok yang namanya terbang dengan dua kepak kata, diawali dengan huruf pertama dalam alfabet.","options":["AIDY SEPTIAN RAMADAN","ALDI FIRMANSYAH","MUHAMAD RAFI AZHAR PUTRA","DAVI ANGGARA"],"answer":"ALDI FIRMANSYAH"},{"clue":"Seperti rekanku yang lain, namaku juga membawa gema bulan suci, namun tersemat di penghujung sebagai penutup yang indah.","options":["SEPTIA PUTRI RAMADHANI","ALUNA SAGITA RAMADHANI","SIFA YASMINA ASRI RAMADHAN","KENSYA PUTRI SYAFARA"],"answer":"ALUNA SAGITA RAMADHANI"},{"clue":"Aku berdiri sebagai satu-satunya pilar di kelas ini yang namanya diawali oleh huruf kedua dalam alfabet.","options":["DENY KUSRIANTO","BARNOTO ADI PRATAMA","M. RADITYA DIKA","ALDI FIRMANSYAH"],"answer":"BARNOTO ADI PRATAMA"},{"clue":"Aku berbagi nama keluarga dengan seorang kawan, seolah kami adalah dua cabang dari pohon yang sama.","options":["DAVI ANGGARA","LESMANA ANGGARA","DENY KUSRIANTO","ALDI FIRMANSYAH"],"answer":"DAVI ANGGARA"},{"clue":"Aku adalah sosok yang diberi amanah untuk menjadi suara dan pemimpin bagi kawan-kawanku di kelas ini.","options":["DENY KUSRIANTO","I Made Dimas ADI WINATA","DAVI ANGGARA","M. AQIL GUFRON"],"answer":"DENY KUSRIANTO"},{"clue":"Namaku ditutup dengan gelar agung bagi seorang wanita dalam mitologi, sang personifikasi keindahan rembulan.","options":["NADIA PUTRI LESTARI","DITA CANDRA DEWI","ELIANA PINTE","GEYZILA NOVIARA"],"answer":"DITA CANDRA DEWI"},{"clue":"Dalam keringkasan namaku, tersimpan sebuah keunikan. Aku adalah bukti bahwa keindahan tak selalu butuh banyak kata.","options":["EVY RATNAWATI","ELIANA PINTE","GEYZILA NOVIARA","DITA CANDRA DEWI"],"answer":"ELIANA PINTE"},{"clue":"Namaku diawali dengan vokal kembar dan diakhiri dengan permata berharga, sebuah kombinasi klasik dan anggun.","options":["ELIANA PINTE","GEYZILA NOVIARA","EVY RATNAWATI","NADIA PUTRI LESTARI"],"answer":"EVY RATNAWATI"},{"clue":"Dalam namaku tersirat bulan kesebelas, saat dunia bersiap menyambut akhir tahun dengan penuh warna.","options":["GEYZILA NOVIARA","HAFIDZAH AULIYA AZKA","ALUNA SAGITA RAMADHANI","KENSYA PUTRI SYAFARA"],"answer":"GEYZILA NOVIARA"},{"clue":"Namaku adalah doa yang terangkai indah, dimulai dengan huruf kedelapan alfabet dan sarat akan makna spiritual.","options":["HAFIDZAH AULIYA AZKA","HESYIEN OSYIEN","RAFA PERMATA HATI","VEDA YANTI AULIA PUTRI"],"answer":"HAFIDZAH AULIYA AZKA"},{"clue":"Identitasku terukir dalam dua kata yang saling berima, menciptakan sebuah simetri nama yang langka dan mudah diingat.","options":["DAVI ANGGARA","HESYIEN OSYIEN","RIFQI AUNUR RAHMAN","MUHAMAD RAFI AZHAR PUTRA"],"answer":"HESYIEN OSYIEN"},{"clue":"Aku membawa warisan budaya Bali dalam namaku, yang juga bermakna 'sang surya' atau matahari.","options":["I NYOMAN ADITYA WEDHANA PUTRA","I MADE DIMAS ADI WINATA","I GEDE ARKHA RADITYA","KADEK ANGGI OKTAVIANI"],"answer":"I GEDE ARKHA RADITYA"},{"clue":"Aku berdiri mendampingi sang ketua, siap mengambil alih kemudi saat dibutuhkan.","options":["I GEDE ARKHA RADITYA","I NYOMAN ADITYA WEDHANA PUTRA","I Made Dimas ADI WINATA","KADEK ANGGI OKTAVIANI"],"answer":"I Made Dimas ADI WINATA"},{"clue":"Namaku adalah rangkaian kata terpanjang di kelas ini, sebuah epik yang diawali dengan identitas anak ketiga dari Pulau Dewata.","options":["I GEDE ARKHA RADITYA","I NYOMAN ADITYA WEDHANA PUTRA","MUHAMAD RAFI AZHAR PUTRA","M. AQIL GUFRON"],"answer":"I NYOMAN ADITYA WEDHANA PUTRA"},{"clue":"Dua penanda khas Bali ada dalam namaku, menunjukkan urutan kelahiran dan sebuah harapan yang indah.","options":["KENSYA PUTRI SYAFARA","DITA CANDRA DEWI","KADEK ANGGI OKTAVIANI","ELIANA PINTE"],"answer":"KADEK ANGGI OKTAVIANI"},{"clue":"Namaku diapit oleh huruf 'K' dan 'A', dengan gelar kebangsawanan wanita terselip di tengahnya.","options":["NADIA PUTRI LESTARI","VEDA YANTI AULIA PUTRI","KENSYA PUTRI SYAFARA","PUTRI SEKAR KINASIH"],"answer":"KENSYA PUTRI SYAFARA"},{"clue":"Aku adalah cerminan nama keluarga dari seorang rekanku, Davi. Kami berbagi identitas yang sama di akhir nama.","options":["DAVI ANGGARA","LESMANA ANGGARA","BARNOTO ADI PRATAMA","RIFQI AUNUR RAHMAN"],"answer":"LESMANA ANGGARA"},{"clue":"Inisial namaku membentuk kombinasi 'M' dan 'A', sebuah singkatan yang menyimpan nama penuh makna.","options":["MUHAMAD RAFI AZHAR PUTRA","M. RADITYA DIKA","M. AQIL GUFRON","M. REHANG"],"answer":"M. AQIL GUFRON"},{"clue":"Namaku disingkat dengan awalan 'M. R' dan diakhiri dengan panggilan akrab yang khas.","options":["M. AQIL GUFRON","M. REHANG","M. RADITYA DIKA","RIFQI AUNUR RAHMAN"],"answer":"M. RADITYA DIKA"},{"clue":"Seperti rekanku, namaku juga diawali 'M. R', namun identitasku lebih ringkas, hanya dalam dua patah kata.","options":["M. AQIL GUFRON","M. REhang","M. RADITYA DIKA","RAFA PERMATA HATI"],"answer":"M. REhang"},{"clue":"Namaku adalah sebuah syair panjang yang diawali dengan nama sang Nabi, sebuah penghormatan yang agung.","options":["MUHAMAD RAFI AZHAR PUTRA","RIFQI AUNUR RAHMAN","RAFFI WAHYU FIRMANSYAH","BARNOTO ADI PRATAMA"],"answer":"MUHAMAD RAFI AZHAR PUTRA"},{"clue":"Aku dipercaya menjaga keuangan kelas. Ketiga kata dalam namaku berakhir dengan alunan vokal yang merdu.","options":["NADIA PUTRI LESTARI","VEDA YANTI AULIA PUTRI","PUTRI SEKAR KINASIH","SEPTIA PUTRI RAMADHANI"],"answer":"NADIA PUTRI LESTARI"},{"clue":"Namaku dimulai dan mengandung gelar kebangsawanan wanita, seolah menegaskan identitasku dua kali.","options":["NADIA PUTRI LESTARI","VEDA YANTI AULIA PUTRI","PUTRI SEKAR KINASIH","SEPTIA PUTRI RAMADHANI"],"answer":"PUTRI SEKAR KINASIH"},{"clue":"Meskipun sering disangka nama seorang pria, di tengah namaku tersimpan kilau batu mulia yang berharga.","options":["RAFA PERMATA HATI","RAFFI WAHYU FIRMANSYAH","RIFQI AUNUR RAHMAN","REYNI ALISA HANAFI"],"answer":"RAFA PERMATA HATI"},{"clue":"Tiga huruf 'R', 'W', dan 'F' menjadi inisial dari setiap kata dalam namaku, membentuk sebuah pola yang unik.","options":["RAFA PERMATA HATI","RIFQI AUNUR RAHMAN","RAFFI WAHYU FIRMANSYAH","MUHAMAD RAFI AZHAR PUTRA"],"answer":"RAFFI WAHYU FIRMANSYAH"},{"clue":"Namaku diawali dengan huruf 'R', namun tak akan kau temukan gelar 'Putri' di dalamnya.","options":["REYNI ALISA HANAFI","RIFQI AUNUR RAHMAN","RAFA PERMATA HATI","VEDA YANTI AULIA PUTRI"],"answer":"REYNI ALISA HANAFI"},{"clue":"Di dalam namaku terdapat kata 'Aunur', yang berarti cahaya, sebuah nama yang sarat dengan harapan.","options":["RIFQI AUNUR RAHMAN","RAFA PERMATA HATI","RAFFI WAHYU FIRMANSYAH","MUHAMAD RAFI AZHAR PUTRA"],"answer":"RIFQI AUNUR RAHMAN"},{"clue":"Aku adalah pena kelas ini, bertugas mencatat setiap jejak dan keputusan penting yang kami buat bersama.","options":["SEPTIA PUTRI RAMADHANI","SIFA YASMINA ASRI RAMADHAN","KENSYA PUTRI SYAFARA","ALUNA SAGITA RAMADHANI"],"answer":"SEPTIA PUTRI RAMADHANI"},{"clue":"Seperti beberapa teman, namaku juga dihiasi oleh gema bulan suci, dan rangkaian namaku adalah salah satu yang terpanjang di kelas.","options":["SEPTIA PUTRI RAMADHANI","SIFA YASMINA ASRI RAMADHAN","KENSYA PUTRI SYAFARA","ALUNA SAGITA RAMADHANI"],"answer":"SIFA YASMINA ASRI RAMADHAN"},{"clue":"Namaku diawali oleh huruf yang jarang dipakai, 'V', dan ditutup dengan gelar kebangsawanan wanita.","options":["NADIA PUTRI LESTARI","VEDA YANTI AULIA PUTRI","KENSYA PUTRI SYAFARA","PUTRI SEKAR KINASIH"],"answer":"VEDA YANTI AULIA PUTRI"}];
+        
+        const allElements = {
+            pages: document.querySelectorAll('.page'),
+            menuPage: { allBtns: document.querySelectorAll('#menu-page .menu-btn') },
+            quizPage: { card: document.querySelector('.quiz-card'), questionCounter: document.getElementById('question-counter'), scoreDisplay: document.getElementById('score'), timerText: document.getElementById('timer-text'), questionText: document.getElementById('question-text'), optionsContainer: document.getElementById('options-container'), nextBtn: document.getElementById('next-btn') },
+            resultPage: { finalScore: document.getElementById('final-score'), feedbackMessage: document.getElementById('feedback-message'), nameInput: document.getElementById('name-input'), saveScoreBtn: document.getElementById('save-score-btn'), restartBtn: document.getElementById('restart-btn') },
+            leaderboardPage: { list: document.getElementById('leaderboard-list') },
+            settingsPage: { musicToggle: document.getElementById('music-toggle'), sfxToggle: document.getElementById('sfx-toggle') },
+            backToMenuBtns: document.querySelectorAll('[id^="back-to-menu-"]')
+        };
+
+        const state = {
+            isInitialized: false, isInitializing: false,
+            isAudioReady: false, isDbReady: false,
+            db: null, sfxEnabled: true, musicEnabled: true, currentPageId: 'menu-page',
+            sounds: {}, menuMusic: null, gameMusic: null, resultSounds: {},
+            currentQuestionIndex: 0, score: 0, timerInterval: null, shuffledQuestions: [],
+        };
+
+        // --- Inisialisasi Cerdas & Anti-Gagal ---
+        async function masterInit() {
+            if (state.isInitialized || state.isInitializing) return;
+            state.isInitializing = true;
+            allElements.menuPage.allBtns.forEach(btn => btn.disabled = true);
+
+            await Promise.allSettled([initAudio(), initFirebase()]);
+
+            state.isInitialized = true;
+            state.isInitializing = false;
+            allElements.menuPage.allBtns.forEach(btn => btn.disabled = false);
+            console.log(`Initialization complete. Audio: ${state.isAudioReady}, DB: ${state.isDbReady}`);
+        }
+
+        async function initAudio() {
+             try {
+                await Tone.start(); setupSounds();
+                state.isAudioReady = true;
+                if (state.musicEnabled) { Tone.Transport.start(); handleMusicState(); }
+            } catch (e) {
+                console.error("Audio context failed, disabling audio features.", e);
+                state.musicEnabled = false; state.sfxEnabled = false;
+                allElements.settingsPage.musicToggle.checked = false;
+                allElements.settingsPage.sfxToggle.checked = false;
+                allElements.settingsPage.musicToggle.disabled = true;
+                allElements.settingsPage.sfxToggle.disabled = true;
+            }
+        }
+
+        async function initFirebase() {
+            if(state.isDbReady) return;
+            try {
+                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+                if (Object.keys(firebaseConfig).length === 0) throw new Error("Firebase config not available.");
+                const app = initializeApp(firebaseConfig);
+                state.db = getFirestore(app);
+                const auth = getAuth(app);
+                await signInAnonymously(auth);
+                state.isDbReady = true;
+            } catch (error) {
+                console.error("Firebase init failed:", error);
+                state.isDbReady = false; // explicitly set to false on error
+                throw error; // re-throw to be caught by caller
+            }
+        }
+        
+        // --- Navigasi & Kontrol Halaman ---
+        const showPage = (pageId) => {
+            if (state.isAudioReady) playSound('click');
+            state.currentPageId = pageId;
+            allElements.pages.forEach(p => { p.classList.remove('active'); p.classList.add('hidden'); });
+            const newPage = document.getElementById(pageId);
+            newPage.classList.remove('hidden');
+            setTimeout(() => newPage.classList.add('active'), 10);
+            if (state.isAudioReady) handleMusicState();
+        };
+
+        // --- Logika Audio ---
+        function setupSounds() {
+            state.sounds = { correct: new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 } }).toDestination(), incorrect: new Tone.MonoSynth({ oscillator: { type: 'fmsquare', modulationType: 'sine' }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 1 } }).toDestination(), click: new Tone.MembraneSynth({ pitchDecay: 0.01, octaves: 2 }).toDestination() };
+            const menuSynth = new Tone.FMSynth().toDestination(); const menuPattern = new Tone.Sequence((time, note) => { menuSynth.triggerAttackRelease(note, "8n", time); }, ["C3", ["E3", "G3"], "Bb2", "G3"], "4n"); state.menuMusic = { loop: menuPattern };
+            const gameKick = new Tone.MembraneSynth().toDestination(); const gameHiHat = new Tone.MetalSynth({ frequency: 250, envelope: { attack: 0.001, decay: 0.1, release: 0.01 }, harmonicity: 5.1, modulationIndex: 32, resonance: 4000, octaves: 1.5 }).toDestination(); gameHiHat.volume.value = -12; const gamePattern = new Tone.Part(((time, event) => { if (event.type === 'kick') gameKick.triggerAttackRelease("C1", "8n", time); if (event.type === 'hat') gameHiHat.triggerAttackRelease("16n", time); }), [{ time: "0:0", type: "kick" }, { time: "0:1", type: "hat" }, { time: "0:2", type: "kick" }, { time: "0:3", type: "hat" }]); gamePattern.loop = true; gamePattern.loopEnd = "1m"; state.gameMusic = { loop: gamePattern };
+            state.resultSounds = { perfect: new Tone.PolySynth(Tone.Synth).toDestination(), great: new Tone.PolySynth(Tone.Synth).toDestination(), good: new Tone.PolySynth(Tone.Synth).toDestination(), average: new Tone.PolySynth(Tone.Synth).toDestination(), poor: new Tone.PolySynth(Tone.Synth).toDestination(), };
+            Tone.Transport.bpm.value = 95;
+            allElements.settingsPage.musicToggle.checked = state.musicEnabled; allElements.settingsPage.sfxToggle.checked = state.sfxEnabled;
+        }
+        const playSound = (sound) => { if (!state.sfxEnabled || !state.isAudioReady) return; const now = Tone.now(); const sounds = state.sounds, resultSounds = state.resultSounds; switch(sound){ case 'correct': sounds.correct.triggerAttackRelease("C5", "8n", now); break; case 'incorrect': sounds.incorrect.triggerAttackRelease("A2", "8n", now); break; case 'click': sounds.click.triggerAttackRelease("C2", "8n", now); break; case 'perfect': resultSounds.perfect.triggerAttackRelease(["C4", "E4", "G4", "B4"], "1n", now); break; case 'great': resultSounds.great.triggerAttackRelease(["G3", "B3", "D4"], "1n", now); break; case 'good': resultSounds.good.triggerAttackRelease(["C4", "G4"], "0.5s", now); break; case 'average': resultSounds.average.triggerAttackRelease("C3", "0.5s", now); break; case 'poor': resultSounds.poor.triggerAttackRelease(["C3", "D#3"], "1n", now); break; } };
+        const handleMusicState = () => { if (!state.musicEnabled || !state.isAudioReady) return; if(state.menuMusic.loop.state === 'started') state.menuMusic.loop.stop(0); if(state.gameMusic.loop.state === 'started') state.gameMusic.loop.stop(0); if (['menu-page', 'leaderboard-page', 'settings-page', 'about-page'].includes(state.currentPageId)) { state.menuMusic.loop.start(0); } else if (state.currentPageId === 'quiz-page') { state.gameMusic.loop.start(0); } };
+        
+        // --- Logika Game ---
+        const { quizPage, resultPage, leaderboardPage } = allElements;
+        const shuffleArray = (array) => { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } };
+        const startQuiz = () => { state.currentQuestionIndex = 0; state.score = 0; state.shuffledQuestions = [...quizData]; shuffleArray(state.shuffledQuestions); quizPage.scoreDisplay.textContent = `Skor: 0`; loadQuestion(); showPage('quiz-page'); };
+        const loadQuestion = () => { resetState(); const currentQuestion = state.shuffledQuestions[state.currentQuestionIndex]; quizPage.questionCounter.textContent = `Pertanyaan ${state.currentQuestionIndex + 1}/${state.shuffledQuestions.length}`; quizPage.questionText.textContent = currentQuestion.clue; const shuffledOptions = [...currentQuestion.options]; shuffleArray(shuffledOptions); shuffledOptions.forEach(option => { const button = document.createElement('button'); button.textContent = option; button.classList.add('btn-option', 'w-full', 'p-4', 'rounded-xl', 'border-2', 'border-slate-600', 'bg-slate-700/50', 'text-slate-300', 'font-semibold', 'text-left'); button.addEventListener('click', selectAnswer); quizPage.optionsContainer.appendChild(button); }); startTimer(); };
+        const resetState = () => { clearInterval(state.timerInterval); quizPage.timerText.textContent = "60"; quizPage.nextBtn.classList.add('hidden'); quizPage.card.classList.remove('shake'); while (quizPage.optionsContainer.firstChild) { quizPage.optionsContainer.removeChild(quizPage.optionsContainer.firstChild); } };
+        const startTimer = () => { let timeleft = 60; state.timerInterval = setInterval(() => { timeleft--; quizPage.timerText.textContent = timeleft; if (timeleft <= 0) { clearInterval(state.timerInterval); handleTimeUp(); } }, 1000); };
+        const handleTimeUp = () => { playSound('incorrect'); Array.from(quizPage.optionsContainer.children).forEach(button => { button.disabled = true; if (button.textContent === state.shuffledQuestions[state.currentQuestionIndex].answer) button.classList.add('correct'); }); quizPage.nextBtn.classList.remove('hidden'); };
+        const selectAnswer = (e) => { clearInterval(state.timerInterval); const selectedBtn = e.target; const isCorrect = selectedBtn.textContent === state.shuffledQuestions[state.currentQuestionIndex].answer; if (isCorrect) { state.score++; quizPage.scoreDisplay.textContent = `Skor: ${state.score}`; selectedBtn.classList.add('correct'); playSound('correct'); } else { selectedBtn.classList.add('incorrect'); quizPage.card.classList.add('shake'); playSound('incorrect'); } Array.from(quizPage.optionsContainer.children).forEach(button => { button.disabled = true; if (button.textContent === state.shuffledQuestions[state.currentQuestionIndex].answer) button.classList.add('correct'); }); quizPage.nextBtn.classList.remove('hidden'); };
+        function getFeedback(percentage) {
+            if (percentage >= 100) return { message: "SEMPURNA! Kamu adalah ensiklopedia berjalan Kelas X-1. Tak ada satu pun yang terlewat!", sound: 'perfect' }; if (percentage >= 85) return { message: "Luar Biasa! Kamu mengenal hampir semua orang. Kamu adalah salah satu pilar kelas ini.", sound: 'great' }; if (percentage >= 70) return { message: "Sangat Baik! Kamu punya pemahaman yang kuat tentang siapa saja teman-temanmu.", sound: 'good' }; if (percentage >= 40) return { message: "Cukup Baik. Kamu sudah mengenal sebagian besar temanmu, tapi masih ada beberapa nama yang perlu diingat.", sound: 'good' }; if (percentage >= 20) return { message: "Lumayan. Kamu tahu beberapa teman, tapi sepertinya kamu lebih sering fokus pada kelompokmu sendiri.", sound: 'average' }; return { message: "Sepertinya kamu masih baru di sini, ya? Ayo lebih sering berinteraksi agar kenal lebih banyak teman!", sound: 'poor' };
+        }
+        const showResults = () => {
+            showPage('result-page'); 
+            resultPage.finalScore.textContent = `${state.score}`; 
+            const percentage = Math.round((state.score / state.shuffledQuestions.length) * 100); 
+            const feedback = getFeedback(percentage); 
+            resultPage.feedbackMessage.textContent = feedback.message; 
+            playSound(feedback.sound); 
+            resultPage.nameInput.value = ''; 
+            
+            resultPage.saveScoreBtn.disabled = true;
+            resultPage.saveScoreBtn.textContent = 'Menghubungkan...';
+            initFirebase().then(() => {
+                if (state.isDbReady) {
+                    resultPage.saveScoreBtn.disabled = false;
+                    resultPage.saveScoreBtn.textContent = 'Simpan Skor';
+                } else {
+                     resultPage.saveScoreBtn.textContent = 'Simpan Gagal';
+                }
+            }).catch(() => {
+                resultPage.saveScoreBtn.textContent = 'Simpan Gagal';
+            });
+        };
+        
+        // --- Interaksi Database ---
+        const saveScore = async () => { if (!state.isDbReady) return; const name = resultPage.nameInput.value.trim(); if (name.length < 3) { resultPage.nameInput.focus(); return; } resultPage.saveScoreBtn.disabled = true; resultPage.saveScoreBtn.textContent = 'Menyimpan...'; const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'; try { await addDoc(collection(state.db, `/artifacts/${appId}/public/data/leaderboard`), { name: name, score: state.score, timestamp: new Date() }); resultPage.saveScoreBtn.textContent = 'Tersimpan ✓'; } catch (error) { console.error("Error adding document: ", error); resultPage.saveScoreBtn.textContent = 'Gagal, Coba Lagi'; resultPage.saveScoreBtn.disabled = false; } };
+        async function showLeaderboard() {
+            showPage('leaderboard-page');
+            leaderboardPage.list.innerHTML = '<p class="text-center text-slate-400">Mengambil data...</p>';
+            if (!state.isDbReady) {
+                leaderboardPage.list.innerHTML = '<p class="text-center text-red-400">Gagal terhubung ke database.</p>';
+                return;
+            }
+            try {
+                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                const q = query(collection(state.db, `/artifacts/${appId}/public/data/leaderboard`), orderBy("score", "desc"), orderBy("timestamp", "desc"), limit(20));
+                const querySnapshot = await getDocs(q);
+                const scores = []; querySnapshot.forEach((doc) => scores.push(doc.data()));
+                leaderboardPage.list.innerHTML = '';
+                if (scores.length === 0) { leaderboardPage.list.innerHTML = '<p class="text-center text-slate-400">Belum ada skor tersimpan.</p>'; return; }
+                scores.forEach((item, index) => { const entry = document.createElement('div'); entry.className = 'flex justify-between items-center bg-slate-800/50 p-3 rounded-lg'; entry.innerHTML = `<div class="flex items-center"><span class="font-bold text-amber-400 w-8">${index + 1}.</span><span class="text-slate-200">${item.name}</span></div><span class="font-bold text-lg text-white">${item.score}</span>`; leaderboardPage.list.appendChild(entry); });
+            } catch (error) { console.error("Error getting documents: ", error); leaderboardPage.list.innerHTML = '<p class="text-center text-red-400">Gagal memuat skor.</p>'; }
+        }
+        
+        // --- Event Listeners ---
+        function handleMenuClick(action, btn) {
+            switch (action) {
+                case 'start': startQuiz(); break;
+                case 'about': showPage('about-page'); break;
+                case 'settings': showPage('settings-page'); break;
+                case 'leaderboard':
+                    const originalText = btn.textContent;
+                    btn.textContent = 'Menghubungkan...';
+                    btn.disabled = true;
+                    initFirebase().then(() => {
+                        showLeaderboard();
+                    }).catch(() => {
+                        leaderboardPage.list.innerHTML = '<p class="text-center text-red-400">Gagal terhubung ke database.</p>';
+                        showPage('leaderboard-page');
+                    }).finally(() => {
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                    });
+                    break;
+            }
+        }
+
+        let firstInteraction = false;
+        allElements.menuPage.allBtns.forEach(btn => {
+            btn.addEventListener('click', async (event) => {
+                if (!firstInteraction) {
+                    firstInteraction = true;
+                    await initAudio(); // Only init audio once on the very first interaction.
+                }
+
+                handleMenuClick(event.currentTarget.dataset.action, event.currentTarget);
+            });
+        });
+
+        allElements.backToMenuBtns.forEach(btn => btn.addEventListener('click', () => showPage('menu-page')));
+        quizPage.nextBtn.addEventListener('click', () => { playSound('click'); state.currentQuestionIndex++; if (state.currentQuestionIndex < state.shuffledQuestions.length) loadQuestion(); else showResults(); });
+        resultPage.restartBtn.addEventListener('click', startQuiz);
+        resultPage.saveScoreBtn.addEventListener('click', saveScore);
+        allElements.settingsPage.musicToggle.addEventListener('change', (e) => { state.musicEnabled = e.target.checked; if(state.isAudioReady) { if (state.musicEnabled) { if (Tone.Transport.state !== 'started') Tone.Transport.start(); handleMusicState(); } else { if (Tone.Transport.state === 'started') Tone.Transport.stop(); if (state.menuMusic) state.menuMusic.loop.stop(0); if (state.gameMusic) state.gameMusic.loop.stop(0);} } playSound('click'); });
+        allElements.settingsPage.sfxToggle.addEventListener('change', (e) => { state.sfxEnabled = e.target.checked; playSound('click'); });
+    </script>
+</body>
+</html>
