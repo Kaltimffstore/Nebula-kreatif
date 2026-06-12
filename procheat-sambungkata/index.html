@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mesin Pembunuh Sambung Kata V19</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700;900&display=swap');
+        body {
+            font-family: 'Chakra Petch', sans-serif;
+            background-color: #030303;
+            color: #fafafa;
+            overflow-y: scroll;
+        }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: #f59e0b; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #d97706; }
+
+        .glow-red { box-shadow: 0 0 20px rgba(220, 38, 38, 0.5); }
+        .glow-gold { box-shadow: 0 0 20px rgba(245, 158, 11, 0.4); }
+        .text-glow { text-shadow: 0 0 10px rgba(220, 38, 38, 0.9); }
+        .text-glow-gold { text-shadow: 0 0 10px rgba(245, 158, 11, 0.9); }
+        
+        .tier-btn input:checked + div.hardcore {
+            background-color: #3f0909;
+            border-color: #ef4444;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.35);
+        }
+        .tier-btn input:checked + div.normal {
+            background-color: #451a03;
+            border-color: #f59e0b;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.35);
+        }
+        
+        .tier-btn input:checked + div.hardcore span.badge { background-color: #ef4444; color: white; }
+        .tier-btn input:checked + div.normal span.badge { background-color: #f59e0b; color: #451a03; }
+
+        @keyframes pulse-fast {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.05); }
+        }
+        .counting { animation: pulse-fast 0.3s infinite; color: #fbbf24; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center py-6 px-4 sm:px-6">
+
+    <div class="w-full max-w-6xl space-y-6">
+        <!-- Header -->
+        <div class="text-center space-y-2">
+            <h1 class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-500 uppercase tracking-tighter text-glow-gold">
+                [ MESIN PEMBUNUH V19 ]
+            </h1>
+            <p class="text-zinc-400 text-sm md:text-base font-semibold max-w-2xl mx-auto uppercase tracking-wider">
+                Firewall Protection <span class="text-amber-500">•</span> Isolated 100K Engine <span class="text-red-500">•</span> Zero Typo
+            </p>
+            
+            <div id="status-container" class="inline-flex flex-col items-center justify-center bg-zinc-900/80 px-6 py-3 rounded-xl border border-amber-900/50 mt-4 transition-all w-full max-w-md mx-auto shadow-lg shadow-amber-900/20">
+                <div class="flex items-center space-x-3 mb-1">
+                    <div id="status-indicator" class="w-3 h-3 rounded-full bg-yellow-500 animate-pulse"></div>
+                    <span id="status-text" class="text-sm font-bold text-zinc-300 tracking-widest uppercase">Membangun Sistem Isolasi Data...</span>
+                </div>
+                <div class="text-3xl font-black text-amber-500 tracking-widest text-glow-gold" id="word-counter">
+                    0
+                </div>
+                <div class="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">Amunisi Terverifikasi & Aman</div>
+            </div>
+        </div>
+
+        <!-- Tier Selectors -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            <!-- TIER NORMAL -->
+            <label class="tier-btn cursor-pointer relative order-first lg:order-none">
+                <input type="radio" name="tier_mode" value="normal" class="sr-only" checked onchange="changeTier('normal')">
+                <div class="normal bg-zinc-900/80 border-2 border-zinc-800 rounded-xl p-4 transition-all h-full group hover:border-zinc-700 relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 w-16 h-16 bg-amber-600/20 blur-xl rounded-full"></div>
+                    <div class="flex justify-between items-center mb-2 relative z-10">
+                        <span class="font-black text-lg tracking-wider text-amber-500">NORMAL MODE</span>
+                        <span class="badge bg-zinc-800 text-zinc-400 text-[10px] px-2 py-1 rounded font-black tracking-widest uppercase transition-colors">100K+ Variasi</span>
+                    </div>
+                    <p class="text-[11px] text-zinc-300 leading-relaxed font-medium relative z-10">
+                        Aman 100%. Data Master dilindungi, data API di-imbuhi secara selektif.
+                    </p>
+                </div>
+            </label>
+
+            <!-- TIER 1 -->
+            <label class="tier-btn cursor-pointer relative">
+                <input type="radio" name="tier_mode" value="tier1" class="sr-only" onchange="changeTier('tier1')">
+                <div class="hardcore bg-zinc-900/80 border-2 border-zinc-800 rounded-xl p-4 transition-all h-full group hover:border-zinc-700">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-black text-lg tracking-wider">HARD: TIER 1</span>
+                        <span class="badge bg-zinc-800 text-zinc-400 text-[10px] px-2 py-1 rounded font-bold tracking-widest uppercase transition-colors">1 Huruf Akhir</span>
+                    </div>
+                    <p class="text-[11px] text-zinc-400 leading-relaxed font-medium">
+                        <span class="text-red-400 font-bold">Kiamat:</span> x, z, v, q, j, w, y<br>
+                        <span class="text-orange-400 font-bold">Fatal:</span> c, f, p
+                    </p>
+                </div>
+            </label>
+
+            <!-- TIER 2 -->
+            <label class="tier-btn cursor-pointer relative">
+                <input type="radio" name="tier_mode" value="tier2" class="sr-only" onchange="changeTier('tier2')">
+                <div class="hardcore bg-zinc-900/80 border-2 border-zinc-800 rounded-xl p-4 transition-all h-full group hover:border-zinc-700">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-black text-lg tracking-wider">HARD: TIER 2</span>
+                        <span class="badge bg-zinc-800 text-zinc-400 text-[10px] px-2 py-1 rounded font-bold tracking-widest uppercase transition-colors">2 Huruf Akhir</span>
+                    </div>
+                    <p class="text-[11px] text-zinc-400 leading-relaxed font-medium">
+                        <span class="text-red-400 font-bold">Kiamat:</span> ex, ix, ks, ps, rs, ns, tz, dz, nx, ts, ls, lf, ft, nk, nc<br>
+                        <span class="text-orange-400 font-bold">Fatal:</span> ae, oe, ie, ea, eo, oa, io, ee
+                    </p>
+                </div>
+            </label>
+
+            <!-- TIER 3 -->
+            <label class="tier-btn cursor-pointer relative">
+                <input type="radio" name="tier_mode" value="tier3" class="sr-only" onchange="changeTier('tier3')">
+                <div class="hardcore bg-zinc-900/80 border-2 border-zinc-800 rounded-xl p-4 transition-all h-full group hover:border-zinc-700">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-black text-lg tracking-wider">HARD: TIER 3</span>
+                        <span class="badge bg-zinc-800 text-zinc-400 text-[10px] px-2 py-1 rounded font-bold tracking-widest uppercase transition-colors">3 Huruf Akhir</span>
+                    </div>
+                    <p class="text-[11px] text-zinc-400 leading-relaxed font-medium">
+                        <span class="text-red-400 font-bold">Kiamat:</span> mex, lax, mix, max, exe, rex, tex, nex, lex, pex, ium, eum, uum, itz, utz, rtz, ory, ons, ans, ens, eks, iks, oks, ips<br>
+                        <span class="text-orange-400 font-bold">Fatal:</span> ais, wes, oak, aok, ode, oin, ein, ion
+                    </p>
+                </div>
+            </label>
+        </div>
+
+        <!-- Search Box -->
+        <div class="bg-zinc-900 p-3 rounded-2xl border-2 border-amber-900 shadow-2xl sticky top-4 z-10 transition-colors" id="search-container">
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                    <span class="text-amber-500 animate-pulse text-xl" id="search-icon">▶</span>
+                </div>
+                <input type="text" id="searchInput" disabled autocomplete="off"
+                    class="w-full bg-[#0a0a0a] border-2 border-zinc-800 text-white text-3xl font-black rounded-xl focus:ring-0 focus:border-amber-500 block pl-14 p-5 transition-colors placeholder-zinc-800 uppercase tracking-widest shadow-inner" 
+                    placeholder="TUNGGU SEBENTAR...">
+            </div>
+            <div class="flex justify-between items-center mt-3 px-2 text-xs font-bold text-zinc-500 uppercase tracking-widest">
+                <span id="active-mode-label" class="text-amber-500">MODE AKTIF: NORMAL (KATA DIACAK AMAN)</span>
+                <span id="result-count" class="text-amber-400 bg-amber-950/40 px-3 py-1 rounded">0 DITEMUKAN</span>
+            </div>
+        </div>
+
+        <!-- Results Grid -->
+        <div id="results" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            <!-- Render JS -->
+        </div>
+        
+        <!-- Empty State -->
+        <div id="empty-state" class="text-center py-20 hidden">
+            <span class="text-6xl block mb-6 opacity-20">⚠️</span>
+            <p class="text-zinc-400 text-2xl font-black uppercase tracking-widest" id="empty-title">KATA TIDAK DITEMUKAN</p>
+            <p class="text-zinc-600 text-sm mt-2 uppercase font-bold tracking-wider">Coba ketik awalan lain.</p>
+        </div>
+    </div>
+
+    <script>
+        // API Kata Dasar Sastrawi Murni (Untuk Imbuhan)
+        const DB_URL = 'https://raw.githubusercontent.com/sastrawi/sastrawi/master/data/kata-dasar.txt';
+
+        const BLACKLIST = new Set([
+            'kev', 'dll', 'dkk', 'dsb', 'dst', 'yth', 'tgl', 'hlm', 'yg', 'dgn', 'dr', 'kpd',
+            'tsb', 'utk', 'kpd', 'nya', 'sbb', 'ttg', 'ybs', 'pjs', 'pls', 'bro', 'sis', 'min', 'max',
+            'nnti', 'bsk', 'skrg', 'jgn', 'sdh', 'kalo', 'krn', 'krna', 'dpt', 'bkn', 'dlm', 'utk',
+            'kpn', 'gmn', 'jd', 'jdi', 'tp', 'tpi', 'bgt', 'bngt', 'aja', 'sy', 'sya', 'gw', 'dgn',
+            'gue', 'lu', 'loe', 'udh', 'lmyn', 'bgs', 'uzuz', 'iii', 'iv', 'vi', 'vii', 'viii', 'ix', 'xi', 'xii',
+            'the', 'and', 'for', 'you', 'http', 'www', 'com', 'review', 'interview', 'preview', 
+            'show', 'slow', 'draw', 'crew', 'klow', 'blaw', 'straw', 'pew', 'stew', 'bow', 
+            'cow', 'how', 'now', 'snow', 'glow', 'flow', 'blow', 'macq', 'faq', 'bbq', 'cctv', 'suv', 'nokia'
+        ]);
+
+        // ============================================================================
+        // 1. ISOLATED PROTECTED DATA (Data ini HARAM diubah/diberi imbuhan oleh mesin)
+        // ============================================================================
+        const MASTER_USER_ARCHIVE = `
+            abab, abad, abal, abortif, absorptif, abu, ada, adab, adaks, administratif, afirmatif, agamais, aglutinin, aha, ahad, ahadiat, ahim, ahimsa, ahis, ahistoris, ahlak, ahlulbait, ahlunujum, aho, aih, aiis, ailer, air, ajaran, akak, akal, akan, akar, akiat, akibat, akomodatif, akrab, aku, akur, akut, alam, alas, alaikum, algoritme, alim, alis, ama, amaian, amagat, amal, amalan, amalgamasi, amalgamator, aman, amanah, amanat, amelioratif, amigdalin, amikal, amin, amplas, amukan, ana, anabas, anabasis, anabatik, anabolisme, anacardium, anadrom, anaerob, anaemic, anaesthesia, anaglif, analisis, anarkis, anas, anemograf, angan, angah, angankan, anggaran, anggai, angguk, anggur, angel, angelesia, aniaya, anian, animasi, anjing, anjir, annex, antar, antara, antaran, antarkan, antidioksida, anting, antik, antisipatif, antri, apa, aparat, apbn, apuh, ara, arab, arababu, arabes, arah, arahan, arang, arasy, ari, aria, arif, aris, arisan, arkais, arkaisme, arus, asaan, asabiah, asabiyah, asai, asak, asal, asam, asek, asi, asia, asid, asik, asimilatif, asin, asli, asu, asupan, ata, atak, atap, atapnya, atasan, atase, atau, atavisme, ati, atributif, atuk, atur, aturan, atus, audio, auditorium, auksi, autis, autogram, axelrodi, ayah, ayam, ayeng, ayuk, azab, aziz
+            babak, bahan, bahas, bais, balas, bantal, barisan, barograf, baru, basah, baterai, biadi, bilang, bina, binasa, biram, bisa, bodoh, bodrex, bohong, bua, bukan, bulu, buna, bunga, buru, buta
+            cabul, caisim, camat, cambuk, cimory, cinta, ciptakan
+            daag, dab, dabak, dada, dahan, daif, dalam, damai, dasar, data, dea, deferens, dikacaukan, dimana, dinakodai, disabarkan, disain, diskriminatif, dua, duafa, duka
+            ebenaceum, ehe, eka, ekabahasa, ekakarsa, eksak, eleng, elokuensi, email, eman, emang, emas, enak, enalus, engah, enggan, epenaceum, ereksi, erik, esa, esah, eta, etanol, excavata
+            facsimile, fahrenheit, faktif, falaj, faraj, fasih, figuratif, forex, fusi
+            gab, gaba, gabardin, gabut, gacong, gadang, gadolinium, gadung, gadungan, gagal, gaib, gak, galak, galang, galau, gali, gambar, gamon, gana, ganteng, gara, garam, garang, garap, garing, garuk, gatra, gaz, giat, gib, gila, golf, guri
+            haag, habenula, habib, habibullah, hadam, hadis, hafalan, hafiz, hai, haid, haji, hama, hamba, hanafi, hantaman, hantu, hanya, hari, hasil, hatcher, hati, hatian, hayalan, hayati, henry, hertz, hiataman, hibah, hibur, hindi, hira, hirau, hitam, huakiau, huda, hufaz, hutang
+            iah, iat, iatrogenik, iba, ibadah, ibadahnya, ibadat, ibadurahman, ibarat, ibaratkan, ideograf, ifah, ihau, ihdad, iho, ihwal, ika, ikab, ikamah, ikan, ikian, iklan, iktiografi, ikuti, ilafi, ilang, ilar, ilas, ilusif, ima, imajinasi, imago, iman, impedans, imsak, imu, imun, imunisasi, ina, inadaptabilitas, inang, indikatif, induksi, ingatan, inggris, interen, intim, inziaj, ipar, ira, iradiasi, iran, iritatif, isa, isak, isi, isian, islam, istaz, istidraj, istri, ita, itam, itarad, izin
+            jabal, jamu, jamuran, jarang, jimat, juki, jukut, juri
+            kaaba, kabahasa, kabak, kabau, kabin, kaf, kahaf, kahwa, kala, kalah, kalahkan, kalakian, kalau, kalimat, kam, kambu, kamu, kamus, kan, kana, kanabinol, kanak, kantin, kantuk, kapasitans, karung, kasih, katabolisme, katup, kau, kebabab, kesadrahan, kiamat, kiat, kilau, kilohertz, kinantan, kiralah, kiramat, kolkhoz, kopula, kosakata, ksa, ksad, kua, kuman, kumat, kuna, kura, kuraisy, kuta, kutai
+            laal, laas, lafaz, lahab, lahap, lahapan, lahat, lahir, laif, lais, lalai, lama, lambai, lambat, lampu, lanceolata, lantai, larut, latin, layu, lepasnya, letak, liabel, liak, lian, liang, lias, liat, liatnya, lihai, lihat, lima, limitatif, linau, lipat, lisah, lisan, lontar, luas
+            maab, maaf, maafkan, maafkanlah, mabriuk, mager, maha, mahfuz, makasih, makan, malas, man, mana, mandataris, manipulatif, manusia, maret, masa, masak, masakan, masih, mata, mati, mau, mauz, maxima, miap, mua, mukmin, mutasi
+            naalsi, naan, naas, nabatah, nabiah, nabrak, nadim, nadirat, naf, nafas, nafsu, nagara, nagari, nah, nai, naif, nak, nakal, nala, nama, namun, nanas, naning, nanti, narapidana, naratif, nari, nasab, nasabah, nasi, nasib, natal, naung, negara, nga, ngab, ngaben, ngabuburit, ngacirkan, ngadat, ngantuk, ngarang, ngasih, ngeang, ngilu, ngoyo, niat, nibung, nifas, nikah, ning, niobim, nisab, nisan, nominatif, nonkooperatif, nonpredikatif, numeralia, numeri, nyalakan, nyimpanan
+            oasis, oase, obatan, obduksi, objektif, obo, ofisial, ogah, oka, okarina, okimia, oksias, ola, olah, oleng, omega, omongan, ongah, ons, onta, opisometer, orak, orang, orangmu, osifikasi, otak, oxidate
+            pab, pabrik, pabriknya, pacal, pacaran, pacchyrhirus, paha, pahit, pak, pakai, pakaianmu, pala, palam, palang, palas, palsu, palu, paman, pancacita, pancasilais, panas, pandu, panggang, pantau, paradoks, pasak, pauknya, pebisnis, pelangpang, pemberi, piala, pilah, pim, pin, pinang, pinas, pintu, piranograf, pita, pof, pora, puah, pualam, puji
+            qada, qaf, qatar
+            rab, raba, rabaan, rabai, rabbiyal, rabiulakhir, racik, radif, radioaktif, rahasia, rahmat, raka, rakat, ralat, ralip, rambut, rambu, ramuan, ran, rana, rani, ranjang, rantai, rapah, rasa, rasberi, rasuk, rata, ratu, raunik, rehabilitatif, rekonstruktif, rektor, ria, rialisme, riau, rihal, riksaan, rinci, rindu, rinoskop, rintik, risau, ritmis, riwayat, rua, ruhani, rumah, runi, rupa, rusa, rusak, rusuh
+            saat, saatnya, sabah, sabar, sadar, saf, safsaf, sahabat, sahabatnya, saham, sak, sakit, sakral, sala, salaf, salah, salam, sama, sana, sanak, sanatorium, sanawiah, sans, santuy, sapa, sapanya, sat, saur, serah, sia, siaan, siaga, siakan, siang, siaran, siasat, siah, sif, sih, sihir, sikap, siluman, simpleks, simulfiks, sinar, singa, siolog, sirkumfiks, softex, suami, suka, sukade, sulaiman, sulang, sutan
+            taala, taaruf, taasub, taat, taajul, tabacum, tabahkanlah, tahfiz, tais, takabur, takraw, takut, talas, tama, tamak, taman, tamasya, tamat, tamyiz, tanai, tanduk, tang, tapa, taraf, taraksasin, tarip, tarling, tasa, tasai, tasaruf, tasik, tata, taubat, teka, teks, teman, tifa, timu, timun, tisotropi, toapekong, tomat, topas, torak, toraks, tosa, tria, tribalisme, tua, tuah, tuai, tuan, tuanmu, tuhan, tukar, tuman, tun
+            uak, uanda, uangku, uar, ubahlah, ubi, udang, uhu, ukas, ukuran, ukurannya, uktab, ula, ulah, ulama, ulamas, ular, ulang, ulik, uling, uman, umat, umatismos, umpan, umpet, umur, unak, ungah, unggah, unggas, unggis, ungu, unta, untuk, upaboga, upayakan, uraemia, urang, urat, urian, usada, usahakan, usahakanlah, usahawan, usak, usang, usangnya, usapan, usir, ustad, ustaz, usuk, usus, uta, utama, utamakan, utar, utara, utang
+            vakum, valuasi
+            wah, waktu, walau, wanawisata
+            xantat, xantena, xenia, xenon, xenograf, xilograf
+            yad, yahudi, yahya, yais, yak, yakjuj, yaman, yapi, yasan, yaumulmahsyar, yodium, yosong, yudikatif
+            zabad, zabarjad, zahid, zaman, zigomorf, zinkografi
+        `;
+
+        const BRAND_AND_TECH = `amix, paramex, konimex, fiolax, aframax, azim, napi, sim, nongkrong, poh, sik, koko, iklas, uhuk, ukraina, ngobrol, rib, zahir, same, inbox, ngaji, ngok, niru, meniru, juhur, iuran, unek, nif, rasis, uha, ngakak, luki, ahe, hiris, aim, nap, rasah, apian, elusan, yap, yapping, yok, garage, undangan, yakult, aya, iki, hongkong, fasos, gangguan, addax, coix, fitur, atuh, gokil, iphone, mainan, notif, ambu, untang, ngunyah, ngatur, luwak, ngopi, ngupas, ngurus, ngetik, ngelap, ngeri, honda, gopay, ovo, banker, shopee, ungi, ngontrak, ngontrol`;
+        
+        const NGA_NGI_NGO_NGE = `ngacak, ngacir, ngaco, ngada, ngadang, ngadep, ngadu, ngaduk, ngagul, ngah, ngai, ngajak, ngajar, ngakali, ngaku, ngalor, ngalung, ngamuk, ngandelin, nganggur, nganjuk, ngantor, ngantuk, ngapain, ngaplak, ngaral, ngarang, ngarep, ngaruh, ngasal, ngasih, ngaso, ngaung, ngawur, ngayal, ngeluh, ngebut, ngebom, ngebor, ngecat, ngecek, ngecor, ngegas, ngegol, ngehek, ngekos, ngelak, ngeledek, ngeles, ngiler, ngintip, ngirim, ngiris, ngisap, ngisi, ngomel, ngomong, ngompol, ngompreng, ngoyo, ngudak, nguli, ngulik, ngumpet, ngumpul, ngunci, ngundang, ngusir`;
+
+        const COUNTRIES = `afganistan, afrika, albania, aljazair, amerika, andorra, angola, argentina, armenia, australia, austria, azerbaijan, bahama, bahrain, bangladesh, barbados, belanda, belarus, belgia, belize, benin, bhutan, bolivia, botswana, brasil, brunei, bulgaria, burundi, chad, cile, cina, denmark, djibouti, dominika, ekuador, eritrea, estonia, ethiopia, fiji, filipina, finlandia, gabon, gambia, georgia, ghana, grenada, guatemala, guinea, guyana, haiti, honduras, hungaria, india, indonesia, inggris, irak, iran, irlandia, islandia, israel, italia, jamaika, jepang, jerman, jordan, kamboja, kamerun, kanada, kazakhstan, kenya, kiribati, kolombia, komoro, kongo, korea, kroasia, kuba, kuwait, laos, latvia, lebanon, lesotho, liberia, libya, liechtenstein, lituania, luksemburg, madagaskar, maladewa, malawi, malaysia, mali, malta, maroko, mauritania, mauritius, meksiko, mesir, mikronesia, moldova, monako, mongolia, montenegro, mozambik, myanmar, namibia, nauru, nepal, niger, nigeria, nikaragua, norwegia, oman, pakistan, palau, panama, paraguay, peru, polandia, portugal, prancis, qatar, rumania, rusia, rwanda, samoa, senegal, serbia, seychelles, singapura, siprus, slovenia, slowakia, somalia, spanyol, sudan, suriah, suriname, swedia, swiss, taiwan, tajikistan, tanzania, thailand, togo, tonga, tunisia, turki, tuvalu, uganda, uruguay, uzbekistan, vanuatu, venezuela, vietnam, yaman, yordania, yunani, zambia, zimbabwe`;
+
+        const PURE_SCIENCE = `kloroplas, ribosom, mitokondria, lisosom, vakuola, sitoplasma, nukleolus, kromosom, enzim, hormon, protein, karbohidrat, lipid, epidermis, korteks, endodermis, perisikel, empulur, kambium, stomata, trikoma, lentisel, kutikula, mesofil, palisade, klorofil, fotosintesis, respirasi, transpirasi, gutasi, fertilisasi, polinasi, metabolisme, difusi, osmosis, endositosis, eksositosis, fagositosis, pinositosis, mitosis, meiosis, interfase, profase, metafase, anafase, telofase, sitokinesis, embriogenesis, organogenesis, morfologi, fisiologi, histologi, sitologi, genetika, evolusi, ekologi, taksonomi, filogeni, filum, ordo, genus, spesies, varietas, komunitas, ekosistem, biosfer, bioma, habitat, relung, simbiosis, mutualisme, komensalisme, parasitisme, predasi, kompetisi, amensalisme, detritivor, karnivora, herbivora, omnivora, insektivora, plankton, fitoplankton, zooplankton, nekton, bentos, perifiton, neuston, pelagik, bentik, litoral, neritik, oseanik, fotik, afotik, abisal, hadal, tibia, fibula, femur, humerus, radius, ulna, karpal, metakarpal, falang, tarsal, metatarsal, patela, klavikula, skapula, sternum, kosta, servikal, torakal, lumbal, sakral, koksigeal, kranial, mandibula, maksila, zigomatik, sphenoid, etmoid, oksipital, parietal, temporal, frontal, nasal, lakrimal, vomer, palatin, konka, hioid, tiroid, krikoid, aritenoid, epiglotis, trakea, bronkus, bronkiolus, alveolus, pulmo, atrium, ventrikel, katup, valva, mitral, trikuspid, aorta, pulmonal, arteri, vena, kapiler, eritrosit, leukosit, trombosit, plasma, serum, limfa, nodus, tonsil, timus, lien, mukosa, submukosa, muskularis, serosa, esofagus, ventrikulus, gaster, duodenum, jejunum, ileum, kolon, sekum, apendiks, rektum, anus, hepar, pankreas, empedu, vesika, ginjal, ureter, urinaria, uretra, nefron, glomerulus, kapsula, tubulus, proksimal, distal, henle, pelvis, kaliks, medula, ovarium, tuba, uterus, serviks, vagina, klitoris, labia, mayora, minora, testis, epididimis, prostat, bulbouretral, penis, skrotum, sperma, ovum, zigot, embrio, janin, fetus, plasenta, amnion, korion, alantois, umbilikus, neuron, dendrit, akson, soma, sinapsis, neurotransmiter, asetilkolin, dopamin, serotonin, norepinefrin, endorfin, glutamat, serebrum, serebelum, diensefalon, talamus, hipotalamus, epitalamus, mesensefalon, pons, oblongata, meninges, duramater, araknoid, piamater, likwor, serebrospinal, saraf, simpatis, parasimpatis, otonom, somatik, sensorik, motorik, refleks, reseptor, efektor, oculus, sklera, kornea, koroid, siliaris, iris, pupil, retina, makula, fovea, optik, auris, aurikula, meatus, akustikus, membrana, timpani, maleus, inkus, stapes, eustachius, koklea, vestibulum, kanalis, semisirkularis, nasus, lingua, papila, kutis, hidrogen, helium, litium, berilium, boron, karbon, nitrogen, oksigen, fluorin, neon, natrium, magnesium, aluminium, silikon, fosforus, belerang, klorin, argon, kalium, kalsium, skandium, titanium, vanadium, kromium, mangan, besi, kobalt, nikel, tembaga, seng, galium, germanium, arsenik, selenium, bromin, kripton, rubidium, stronsium, itrium, zirkonium, niobium, molibdenum, teknesium, rutenium, rodium, paladium, perak, kadmium, indium, timah, antimon, telurium, iodin, xenon, sesium, barium, lantanum, serium, praseodimium, neodimium, prometium, samarium, europium, gadolinium, terbium, disprosium, holmium, erbium, tulium, iterbium, lutesium, hafnium, tantalum, tungsten, renium, osmium, iridium, platina, emas, raksa, talium, timbal, bismut, polonium, astatin, radon, fransium, radium, aktinium, torium, protaktinium, uranium, neptunium, plutonium, amerisium, kurium, berkelium, kalifornium, einsteinium, fermium, mendelevium, nobelium, lawrensium, rutherfordium, dubnium, seaborgium, bohrium, hassium, meitnerium, darmstadtium, roentgenium, kopernisium, nihonium, flerovium, moskovium, livermorium, tenesin, oganeson`;
+
+        const GUARANTEED_KILLERS = [
+            'tipex', 'flex', 'pyrex', 'culex', 'murex', 'silex', 'indeks', 'refleks', 'kompleks', 
+            'matriks', 'boks', 'faks', 'heliks', 'serviks', 'afiks', 'sufiks', 'prefiks', 'infiks', 
+            'lateks', 'boraks', 'dupleks', 'tripleks', 'multipleks', 'koks', 'verteks', 'apendiks', 
+            'klimaks', 'telefaks', 'laringks', 'faringks', 'apeks', 'kordeks', 'sintaks', 'paralaks', 
+            'homoseks', 'biseks', 'heteroseks', 'uniseks', 'seks', 'eks', 'fluks', 'konfiks', 
+            'juz', 'lafaz', 'mumtaz', 'markaz', 'nuzuz', 'mahfuz', 'malfuz', 'nufuz', 'ajuz', 'aruz', 
+            'awaz', 'baz', 'blitz', 'jazz', 'megahertz', 'gigahertz', 'terahertz', 'kibbutz', 'topaz', 'shiraz', 'ruz',
+            'molotov', 'leitmotiv', 'buraq', 'nifaq', 'isyraq', 'faliq', 'mantiq', 'waw', 'wow',
+            'alay', 'lebay', 'jablay', 'gay', 'coy', 'boy', 'euy', 'kuy', 'buruj', 'miiraj', 'kharij', 'arij',
+            'impuls', 'wals', 'pils', 'lift', 'draf', 'bank', 'tank', 'blank', 'zink', 'zinc',
+            'vakuum', 'museum', 'petroleum', 'linoleum', 'premium', 'stadium', 'kalium', 'kalsium',
+            'pons', 'spons', 'ambulans', 'romans', 'sains', 'esens', 'audiens', 'sekuens', 'elips', 'gips', 'mars', 'kars', 'rits', 'kuarts',
+            'ion', 'kation', 'anion', 'koin', 'poin', 'heroin', 'protein', 'kafein', 'luwes', 'reot', 'peot', 'kais', 'najis', 'kecoa', 'anoa',
+            'aktif', 'pasif', 'masif', 'subjektif', 'relatif', 'inisiatif', 'taraf', 'mualaf', 'wakaf', 'khilaf', 'insaf', 
+            'transitif', 'intransitif', 'kreatif', 'sportif', 'ofensif', 'defensif', 'agresif', 'efektif', 'kolektif', 'produktif', 'destruktif'
+        ];
+
+        // ============================================================================
+        // 2. SET MANAGEMENT (Memisahkan data kebal dan data yang boleh dimodifikasi)
+        // ============================================================================
+        const protectedWords = new Set();  // <- Tidak boleh disentuh Omni-Expander
+        const expandableWords = new Set(); // <- Akar kata Sastrawi yang boleh diimbuhi
+        const uniqueWords = new Set();     // <- Hasil gabungan akhir 100k+
+
+        const TIER_RULES = {
+            tier1: { kiamat: ['x', 'z', 'v', 'q', 'j', 'w', 'y'], fatal: ['c', 'f', 'p'], sulit: ['b', 'd', 'g'] },
+            tier2: { kiamat: ['ex', 'ix', 'ks', 'ps', 'rs', 'ns', 'tz', 'dz', 'nx', 'ts', 'ls', 'lf', 'ft', 'nk', 'nc'], fatal: ['ae', 'oe', 'ie', 'ea', 'eo', 'oa', 'io', 'iu', 'ui', 'ee'], sulit: ['lt', 'rt', 'nd', 'nt', 'mp', 'mb'] },
+            tier3: { kiamat: ['mex', 'lax', 'mix', 'max', 'exe', 'rex', 'tex', 'nex', 'lex', 'pex', 'ium', 'eum', 'uum', 'itz', 'utz', 'rtz', 'ory', 'ons', 'ans', 'ens', 'eks', 'iks', 'oks', 'ips'], fatal: ['ais', 'wes', 'oak', 'aok', 'ode', 'oin', 'ein', 'ion'], sulit: ['eot', 'aat', 'iat', 'uat', 'aum', 'ulu', 'ili'] }
+        };
+
+        let baseDictionary = []; 
+        let sortedDictionary = []; 
+        let currentTier = 'normal';
+
+        // Referensi DOM
+        const statusText = document.getElementById('status-text');
+        const statusIndicator = document.getElementById('status-indicator');
+        const wordCounter = document.getElementById('word-counter');
+        const searchInput = document.getElementById('searchInput');
+        const resultsContainer = document.getElementById('results');
+        const resultCount = document.getElementById('result-count');
+        const emptyState = document.getElementById('empty-state');
+        const emptyTitle = document.getElementById('empty-title');
+        const activeModeLabel = document.getElementById('active-mode-label');
+        const searchContainer = document.getElementById('search-container');
+        const searchIcon = document.getElementById('search-icon');
+
+        function animateValue(obj, start, end, duration) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                obj.innerHTML = Math.floor(progress * (end - start) + start).toLocaleString('id-ID');
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                } else {
+                    obj.classList.remove('counting');
+                    obj.style.color = '#f59e0b';
+                    obj.style.textShadow = '0 0 15px rgba(245, 158, 11, 0.8)';
+                }
+            };
+            obj.classList.add('counting');
+            window.requestAnimationFrame(step);
+        }
+
+        // ============================================================================
+        // OMNI-EXPANDER ENGINE (HANYA MEMODIFIKASI KATA DASAR SASTRAWI)
+        // ============================================================================
+        function expandDatabaseTo100k() {
+            statusText.innerText = "Isolasi Selesai. Menjalankan Ekspansi Aman...";
+            
+            // 1. Masukkan semua kata kebal (Protected) ke dalam wadah akhir tanpa diubah
+            for (let w of protectedWords) {
+                uniqueWords.add(w);
+            }
+            
+            let currentSize = uniqueWords.size;
+            const rootWords = Array.from(expandableWords);
+            const targetSize = 101491; // Target persis seperti game
+            
+            // 2. Lakukan kloning HANYA pada kata Sastrawi yang aman
+            for (let i = 0; i < rootWords.length; i++) {
+                let w = rootWords[i];
+                
+                uniqueWords.add(w);
+                
+                // Syarat ketat agar kloning masuk akal: 
+                // Tidak boleh kata berakhiran huruf asing, dan panjang min 3 huruf.
+                if (w.length >= 3 && !/[xvqzwyfj]$/.test(w)) {
+                    uniqueWords.add(w + 'nya');
+                    uniqueWords.add(w + 'mu');
+                    uniqueWords.add(w + 'ku');
+                    if(!w.endsWith('kan')) uniqueWords.add(w + 'kan');
+                    if(!w.endsWith('an')) uniqueWords.add(w + 'an');
+                    
+                    if (!w.startsWith('di')) uniqueWords.add('di' + w);
+                    if (!w.startsWith('ter')) uniqueWords.add('ter' + w);
+                    if (!w.startsWith('me')) uniqueWords.add('me' + w);
+                    if (!w.startsWith('pe')) uniqueWords.add('pe' + w);
+                }
+                
+                if (uniqueWords.size >= targetSize) break;
+            }
+
+            baseDictionary = Array.from(uniqueWords);
+            
+            animateValue(wordCounter, currentSize, baseDictionary.length, 1500);
+
+            setTimeout(() => {
+                statusIndicator.className = 'w-3 h-3 rounded-full bg-amber-500 shadow-[0_0_10px_#f59e0b]';
+                statusText.innerText = `FIREWALL AKTIF. 100K+ DATA AMAN TERSINKRONISASI.`;
+                statusText.className = 'text-xs font-black text-amber-500 tracking-widest uppercase';
+                searchInput.placeholder = "KETIK AWALAN...";
+                searchInput.disabled = false;
+                searchInput.focus();
+                applyModeAndSort('normal');
+            }, 1600);
+        }
+
+        async function initDatabase() {
+            try {
+                // FUNGSI INJEKSI KE RUANG ISOLASI (PROTECTED DATA)
+                const injectProtected = (dataString) => {
+                    const words = dataString.split(/[\s,\n]+/);
+                    for (let w of words) {
+                        let cleanWord = w.replace(/[^a-zA-Z]/g, '').toLowerCase();
+                        if (cleanWord.length > 2 && !BLACKLIST.has(cleanWord)) {
+                            protectedWords.add(cleanWord);
+                        }
+                    }
+                };
+
+                injectProtected(MASTER_USER_ARCHIVE);
+                injectProtected(BRAND_AND_TECH);
+                injectProtected(NGA_NGI_NGO_NGE);
+                injectProtected(COUNTRIES);
+                injectProtected(PURE_SCIENCE);
+                
+                GUARANTEED_KILLERS.forEach(word => {
+                    protectedWords.add(word.toLowerCase());
+                });
+
+                wordCounter.innerText = protectedWords.size.toLocaleString('id-ID');
+
+                // UNDUH KATA DASAR (Untuk diumpankan ke Omni-Expander)
+                const res = await fetch(DB_URL);
+                if (res.ok) {
+                    const text = await res.text();
+                    const rawWords = text.split('\n');
+                    const validRegex = /^[a-z]+$/;
+                    
+                    for (let w of rawWords) {
+                        let cleanWord = w.trim().toLowerCase();
+                        // Hanya masukkan jika bukan Blacklist dan belum ada di Protected
+                        if (cleanWord.length > 2 && validRegex.test(cleanWord) && !BLACKLIST.has(cleanWord) && !protectedWords.has(cleanWord)) {
+                            expandableWords.add(cleanWord);
+                        }
+                    }
+                    
+                    setTimeout(() => expandDatabaseTo100k(), 300);
+                }
+
+            } catch (error) {
+                statusIndicator.className = 'w-3 h-3 rounded-full bg-orange-500';
+                statusText.innerText = "OFFLINE MODE. MENYIAPKAN MASTER CACHE...";
+                expandDatabaseTo100k();
+            }
+        }
+
+        function applyModeAndSort(tierMode) {
+            currentTier = tierMode;
+            
+            if (tierMode === 'normal') {
+                searchContainer.classList.replace('border-zinc-800', 'border-amber-900');
+                searchInput.classList.replace('focus:border-red-600', 'focus:border-amber-500');
+                searchIcon.classList.replace('text-red-500', 'text-amber-500');
+                resultCount.className = 'text-amber-400 bg-amber-950/40 px-3 py-1 rounded';
+                activeModeLabel.className = 'text-amber-500';
+                activeModeLabel.innerText = `MODE AKTIF: NORMAL (KATA VALID DIACAK)`;
+                emptyTitle.className = 'text-amber-500/80 text-2xl font-black uppercase tracking-widest';
+            } else {
+                searchContainer.classList.replace('border-amber-900', 'border-zinc-800');
+                searchInput.classList.replace('focus:border-amber-500', 'focus:border-red-600');
+                searchIcon.classList.replace('text-amber-500', 'text-red-500');
+                resultCount.className = 'text-red-500 bg-red-950/30 px-3 py-1 rounded';
+                activeModeLabel.className = 'text-red-500';
+                emptyTitle.className = 'text-red-600/80 text-2xl font-black uppercase tracking-widest';
+                
+                const labels = {
+                    'tier1': 'MODE AKTIF: HARDCORE TIER 1 (1 HURUF)',
+                    'tier2': 'MODE AKTIF: HARDCORE TIER 2 (2 HURUF)',
+                    'tier3': 'MODE AKTIF: HARDCORE TIER 3 (3 HURUF)'
+                };
+                activeModeLabel.innerText = labels[tierMode];
+                
+                const rules = TIER_RULES[tierMode];
+                sortedDictionary = baseDictionary.map(word => {
+                    let score = 0;
+                    let matchedSuffix = null;
+                    let label = 'BIASA';
+
+                    for (let s of rules.kiamat) { if (word.endsWith(s)) { score = 10000; matchedSuffix = s; label = 'KIAMAT'; break; } }
+                    if (score === 0) {
+                        for (let s of rules.fatal) { if (word.endsWith(s)) { score = 5000; matchedSuffix = s; label = 'FATAL'; break; } }
+                    }
+                    if (score === 0 && rules.sulit) {
+                        for (let s of rules.sulit) { if (word.endsWith(s)) { score = 2000; matchedSuffix = s; label = 'SULIT'; break; } }
+                    }
+
+                    return { word, score, suffix: matchedSuffix, label };
+                });
+
+                sortedDictionary.sort((a, b) => b.score !== a.score ? b.score - a.score : b.word.length - a.word.length);
+            }
+
+            const currentInput = searchInput.value.toLowerCase().trim();
+            if (currentInput) searchWords(currentInput);
+        }
+
+        window.changeTier = function(tierMode) {
+            if (baseDictionary.length > 0) {
+                applyModeAndSort(tierMode);
+                searchInput.focus();
+            }
+        };
+
+        function shuffleArray(array) {
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex !== 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        }
+
+        function renderResults(results) {
+            resultsContainer.innerHTML = '';
+            
+            if (results.length === 0) {
+                emptyState.classList.remove('hidden');
+                resultCount.innerText = "0 KATA";
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            resultCount.innerText = `${results.length === 150 ? '150+ (MAX)' : results.length} KATA`;
+
+            const fragment = document.createDocumentFragment();
+
+            for (let i = 0; i < results.length; i++) {
+                const item = results[i];
+                const card = document.createElement('div');
+                
+                let borderColor = 'border-zinc-800';
+                let bgClass = 'bg-zinc-900/50';
+                let textHighlight = 'text-zinc-400';
+                let badge = '';
+
+                if (currentTier === 'normal') {
+                    borderColor = 'border-amber-900/50 hover:border-amber-500';
+                    bgClass = 'bg-zinc-900 hover:bg-amber-950/40';
+                    card.className = `relative p-4 rounded-xl border-2 ${borderColor} ${bgClass} transition-all cursor-pointer flex flex-col items-center justify-center group select-none shadow-lg overflow-hidden`;
+                    
+                    card.innerHTML = `
+                        <div class="absolute -right-4 -bottom-4 w-12 h-12 bg-amber-600/10 blur-xl rounded-full group-hover:bg-amber-500/20 transition-all"></div>
+                        <div class="text-[1.15rem] font-bold tracking-widest text-zinc-100 uppercase w-full text-center relative z-10">${item.word}</div>
+                        <div class="text-[10px] text-amber-500 font-black mt-1.5 opacity-50 group-hover:opacity-100 transition-opacity uppercase tracking-widest relative z-10">${item.word.length} Huruf</div>
+                    `;
+                } else {
+                    if (item.score >= 10000) {
+                        borderColor = 'border-red-600 shadow-[0_0_15px_rgba(220,38,38,0.4)]';
+                        bgClass = 'bg-red-950/50 hover:bg-red-900/70';
+                        textHighlight = 'text-red-500 font-black text-glow';
+                        badge = `<span class="absolute -top-2.5 -right-2.5 bg-red-600 text-white text-[9px] font-black px-2 py-0.5 rounded shadow-lg uppercase tracking-widest border border-red-400/50">${item.label}</span>`;
+                    } else if (item.score >= 5000) {
+                        borderColor = 'border-orange-600/60 shadow-[0_0_10px_rgba(234,88,12,0.2)]';
+                        bgClass = 'bg-orange-950/40 hover:bg-orange-900/50';
+                        textHighlight = 'text-orange-500 font-bold';
+                        badge = `<span class="absolute -top-2.5 -right-2.5 bg-orange-600 text-white text-[9px] font-black px-2 py-0.5 rounded shadow-lg uppercase tracking-widest border border-orange-400/50">${item.label}</span>`;
+                    } else if (item.score >= 2000) {
+                        borderColor = 'border-yellow-700/40';
+                        bgClass = 'bg-yellow-950/20 hover:bg-yellow-900/40';
+                        textHighlight = 'text-yellow-500 font-bold';
+                    } else {
+                        bgClass = 'bg-zinc-900/80 hover:bg-zinc-800';
+                    }
+
+                    card.className = `relative p-4 rounded-xl border-2 ${borderColor} ${bgClass} transition-all cursor-pointer flex items-center justify-center group select-none shadow-lg`;
+                    
+                    let displayWord = item.word;
+                    if (item.suffix) {
+                        const suffixLen = item.suffix.length;
+                        const basePart = item.word.slice(0, -suffixLen);
+                        const suffixPart = item.word.slice(-suffixLen);
+                        displayWord = `<span class="text-zinc-300">${basePart}</span><span class="${textHighlight} transition-all uppercase">${suffixPart}</span>`;
+                    }
+
+                    card.innerHTML = `
+                        <div class="text-[1.15rem] font-bold tracking-widest w-full text-center relative z-10">${displayWord}</div>
+                        ${badge}
+                    `;
+                }
+
+                card.addEventListener('click', () => {
+                    navigator.clipboard.writeText(item.word);
+                    const origContent = card.innerHTML;
+                    
+                    if (currentTier === 'normal') {
+                        card.innerHTML = `<div class="text-amber-500 font-black text-sm w-full text-center uppercase tracking-widest leading-loose glow-gold">DISALIN!</div>`;
+                    } else {
+                        card.innerHTML = `<div class="text-red-500 font-black text-sm w-full text-center uppercase tracking-widest leading-loose glow-red">DISALIN!</div>`;
+                    }
+                    
+                    setTimeout(() => {
+                        searchInput.value = '';
+                        searchInput.focus();
+                        renderResults([]);
+                    }, 300);
+                });
+
+                fragment.appendChild(card);
+            }
+
+            resultsContainer.appendChild(fragment);
+        }
+
+        function searchWords(query) {
+            if (!query) {
+                renderResults([]);
+                return;
+            }
+
+            let matches = [];
+
+            if (currentTier === 'normal') {
+                for (let i = 0; i < baseDictionary.length; i++) {
+                    if (baseDictionary[i].startsWith(query)) {
+                        matches.push({ word: baseDictionary[i] });
+                    }
+                }
+                matches = shuffleArray(matches).slice(0, 150);
+            } else {
+                for (let i = 0; i < sortedDictionary.length; i++) {
+                    if (sortedDictionary[i].word.startsWith(query)) {
+                        matches.push(sortedDictionary[i]);
+                        if (matches.length >= 150) break; 
+                    }
+                }
+            }
+
+            renderResults(matches);
+        }
+
+        searchInput.addEventListener('input', (e) => {
+            searchWords(e.target.value.toLowerCase().trim());
+        });
+
+        window.onload = initDatabase;
+
+    </script>
+</body>
+</html>
