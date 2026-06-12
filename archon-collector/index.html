@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Archon Collector Vault V16.0</title>
+    <!-- Tailwind & Fonts -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #050505; 
+            color: #e0e7ff;
+            overscroll-behavior: none;
+            user-select: none;
+            overflow: hidden;
+        }
+        .font-title { font-family: 'Orbitron', sans-serif; }
+        
+        #particles-canvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none;
+        }
+
+        .glass-panel {
+            background: rgba(20, 20, 35, 0.8);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(139, 92, 246, 0.15);
+            border-radius: 1.5rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        
+        /* RARITY STYLES V16.0 */
+        .rarity-common { border: 2px solid #9ca3af; }
+        .rarity-rare { border: 2px solid #3b82f6; box-shadow: 0 0 10px #3b82f6; }
+        .rarity-epic { border: 2px solid #a855f7; box-shadow: 0 0 15px #a855f7; }
+        
+        /* LEGENDARY (Tier 4) */
+        .rarity-legendary {
+            border: 2px solid #22d3ee;
+            box-shadow: 0 0 20px #22d3ee;
+            z-index: 5;
+        }
+
+        /* MYTHIC (Tier 5 - Higher than Legendary) */
+        .rarity-mythic { 
+            border: 2px solid #f59e0b; 
+            box-shadow: 0 0 25px #f59e0b, inset 0 0 15px #f59e0b;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(0,0,0,0.8));
+            animation: pulse-mythic 3s infinite;
+        }
+
+        /* EXOTIC (Tier 6 - Glitch Pink) */
+        .rarity-exotic {
+            border: 2px solid #ff00ff;
+            box-shadow: 0 0 15px #ff00ff, inset 0 0 10px #ff00ff;
+            background-image: repeating-linear-gradient(45deg, rgba(255, 0, 255, 0.1), rgba(255, 0, 255, 0.1) 10px, rgba(0, 0, 0, 0.8) 10px, rgba(0, 0, 0, 0.8) 20px);
+            animation: glitch-border 2s infinite;
+        }
+
+        /* DIVINE (Tier 7 - Holy White/Gold) */
+        .rarity-divine {
+            border: 2px solid #ffffff;
+            box-shadow: 0 0 30px #ffd700, 0 0 60px #ffffff;
+            background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,215,0,0.1) 50%, rgba(0,0,0,0.9) 100%);
+            animation: divine-glow 4s infinite alternate;
+        }
+
+        /* ULTRA SECRET (Tier 8 - Cosmic RGB) */
+        .rarity-ultra-secret {
+            border: 3px solid transparent;
+            background-image: linear-gradient(#000, #000), linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+            background-origin: border-box;
+            background-clip: content-box, border-box;
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.5), inset 0 0 50px rgba(0,0,0,1);
+            animation: ultra-spin 2s linear infinite;
+        }
+
+        .holo-card { position: relative; overflow: hidden; transform-style: preserve-3d; }
+        .holo-card::after {
+            content: ""; position: absolute; top: -50%; left: -50%; bottom: -50%; right: -50%;
+            background: linear-gradient(115deg, transparent 20%, rgba(255,255,255,0.4) 40%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,0.4) 60%, transparent 80%);
+            transform: rotate(25deg) translateY(100%); animation: holo-sheen 6s infinite; pointer-events: none; mix-blend-mode: overlay;
+        }
+
+        @keyframes holo-sheen { 0% { transform: rotate(25deg) translate(-100%, -100%); } 20% { transform: rotate(25deg) translate(100%, 100%); } 100% { transform: rotate(25deg) translate(100%, 100%); } }
+        @keyframes pulse-mythic { 0% { box-shadow: 0 0 15px #f59e0b; } 50% { box-shadow: 0 0 35px #f59e0b; } 100% { box-shadow: 0 0 15px #f59e0b; } }
+        @keyframes glitch-border { 0% { border-color: #ff00ff; } 50% { border-color: #00ffff; } 100% { border-color: #ff00ff; } }
+        @keyframes divine-glow { 0% { box-shadow: 0 0 20px #ffd700; } 100% { box-shadow: 0 0 50px #ffffff, 0 0 80px #ffd700; } }
+        @keyframes ultra-spin { 100% { filter: hue-rotate(360deg); } }
+
+        .inspect-scene { perspective: 1000px; width: 220px; height: 320px; margin: 0 auto; z-index: 10; position: relative; pointer-events: auto;}
+        .inspect-card { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.1s ease-out; border-radius: 1rem; }
+        
+        .rank-1 { background: linear-gradient(90deg, rgba(234, 179, 8, 0.2), transparent); border-left: 4px solid #eab308; }
+        .rank-2 { background: linear-gradient(90deg, rgba(148, 163, 184, 0.2), transparent); border-left: 4px solid #94a3b8; }
+        .rank-3 { background: linear-gradient(90deg, rgba(180, 83, 9, 0.2), transparent); border-left: 4px solid #b45309; }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0c0a18; }
+        ::-webkit-scrollbar-thumb { background: #4c1d95; border-radius: 3px; }
+
+        .animate-fade { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .opening-card-container { perspective: 1000px; }
+        .opening-card-inner { position: relative; width: 100%; height: 100%; transition: transform 0.8s; transform-style: preserve-3d; }
+        .opening-card-container.reveal .opening-card-inner { transform: rotateY(180deg); }
+        .opening-card-front, .opening-card-back { position: absolute; width: 100%; height: 100%; -webkit-backface-visibility: hidden; backface-visibility: hidden; border-radius: 1rem; }
+        .opening-card-back { transform: rotateY(180deg); }
+    </style>
+</head>
+<body class="min-h-screen p-0 md:p-4 flex items-center justify-center">
+
+    <canvas id="particles-canvas"></canvas>
+
+    <div id="loading-overlay" class="fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-[999]">
+        <i class="fas fa-atom fa-spin text-5xl text-violet-500"></i>
+        <p class="mt-4 font-title tracking-widest text-lg">MENGHUBUNGKAN ARCHON V16.0...</p>
+    </div>
+
+    <!-- MAIN APP -->
+    <div id="app-container" class="w-full max-w-md h-[100dvh] md:h-[80vh] md:max-h-[800px] glass-panel shadow-2xl overflow-hidden flex flex-col transition-all duration-500 relative z-10">
+        <!-- Header -->
+        <div class="flex-shrink-0 p-4 border-b border-violet-900/50 bg-black/20">
+            <div class="flex justify-between items-center mb-2">
+                <div class="flex items-center gap-2 cursor-pointer" onclick="window.showProfile()">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center border border-white/30" id="header-avatar">👤</div>
+                    <div class="flex flex-col">
+                        <h1 class="font-title text-sm font-bold text-white tracking-wide">ARCHON</h1>
+                        <span class="text-[10px] text-cyan-400" id="header-title">Novice</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 bg-slate-900/80 border border-yellow-500/50 px-4 py-1.5 rounded-full shadow-lg">
+                    <i class="fas fa-gem text-yellow-400"></i>
+                    <span id="user-currency" class="font-bold font-mono text-lg text-white">0</span>
+                </div>
+            </div>
+            <!-- XP -->
+            <div class="flex items-center gap-2">
+                <span class="text-[10px] font-bold bg-violet-600 px-2 rounded text-white" id="user-level-badge">LV 1</span>
+                <div class="flex-grow h-2 bg-slate-800 rounded-full overflow-hidden">
+                    <div id="user-xp-bar" class="h-full bg-gradient-to-r from-cyan-500 to-violet-500 w-0 transition-all duration-500"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="flex-grow overflow-y-auto" id="content-area">
+            <!-- MENU -->
+            <div id="screen-menu" class="p-6 flex flex-col justify-between h-full animate-fade">
+                <div class="text-center mt-6">
+                    <i class="fas fa-fingerprint text-7xl text-white" style="filter: drop-shadow(0 0 25px rgba(255,255,255,0.5));"></i>
+                    <h2 class="font-title text-3xl font-bold text-white mt-6">COLLECTOR</h2>
+                    <h3 class="font-title text-3xl text-cyan-400">VAULT V16</h3>
+                    <p class="text-sm text-violet-300 mt-2">Ultra Secret Horizon</p>
+                </div>
+                
+                <div class="space-y-3 mb-8">
+                    <button onclick="window.navigateTo('hub')" class="w-full bg-gradient-to-r from-violet-600 to-blue-600 text-white font-bold py-4 rounded-xl shadow-lg hover:from-violet-500 transition-all text-lg font-title tracking-wider">
+                        MASUK HUB
+                    </button>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="window.checkDaily()" class="w-full bg-green-900/50 border border-green-500/30 text-green-300 py-3 rounded-xl hover:bg-green-800/50 transition flex flex-col items-center justify-center gap-1">
+                            <i class="fas fa-calendar-check text-xl"></i><span class="text-xs">Harian</span>
+                        </button>
+                        <button onclick="window.showRedeem()" class="w-full bg-yellow-900/50 border border-yellow-500/30 text-yellow-300 py-3 rounded-xl hover:bg-yellow-800/50 transition flex flex-col items-center justify-center gap-1">
+                            <i class="fas fa-ticket-alt text-xl"></i><span class="text-xs">Redeem</span>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="window.showModal('settings-modal')" class="w-full bg-slate-800/50 text-slate-300 py-3 rounded-xl hover:bg-slate-700 transition">Pengaturan</button>
+                        <button onclick="window.showModal('about-modal')" class="w-full bg-slate-800/50 text-slate-300 py-3 rounded-xl hover:bg-slate-700 transition">Tentang</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- HUB -->
+            <div id="screen-hub" class="p-6 space-y-4 hidden animate-fade">
+                <h2 class="font-title text-2xl text-center text-white mb-2">Main Hub</h2>
+                <div class="flex gap-2 mb-2">
+                     <button onclick="window.navigateTo('menu')" class="flex-1 bg-slate-700/50 text-xs py-2 rounded text-slate-300 hover:bg-slate-600 border border-slate-600">
+                        <i class="fas fa-arrow-left mr-1"></i> Menu
+                    </button>
+                    <button onclick="window.showStats()" class="flex-1 bg-slate-700/50 text-xs py-2 rounded text-cyan-300 hover:bg-slate-600 border border-cyan-900">
+                        <i class="fas fa-chart-line mr-1"></i> Peringkat
+                    </button>
+                    <button onclick="window.showProfile()" class="flex-1 bg-slate-700/50 text-xs py-2 rounded text-purple-300 hover:bg-slate-600 border border-purple-900">
+                        <i class="fas fa-user mr-1"></i> Profil
+                    </button>
+                </div>
+                <button onclick="window.navigateTo('shop')" class="w-full text-left p-6 glass-panel border-cyan-500/50 hover:bg-cyan-900/50 transition group">
+                    <div class="flex items-center gap-4">
+                        <div class="bg-cyan-900/30 p-3 rounded-lg group-hover:scale-110 transition"><i class="fas fa-store text-cyan-400 text-2xl"></i></div>
+                        <div><h3 class="font-title text-xl text-white">Toko</h3><p class="text-xs text-slate-300">Beli Crate & Pack</p></div>
+                    </div>
+                </button>
+                <button onclick="window.navigateTo('inventory')" class="w-full text-left p-6 glass-panel border-violet-500/50 hover:bg-violet-900/50 transition group">
+                    <div class="flex items-center gap-4">
+                        <div class="bg-violet-900/30 p-3 rounded-lg group-hover:scale-110 transition"><i class="fas fa-boxes text-violet-400 text-2xl"></i></div>
+                        <div><h3 class="font-title text-xl text-white">Inventaris</h3><p class="text-xs text-slate-300">Buka Item Anda</p></div>
+                    </div>
+                </button>
+                <button onclick="window.navigateTo('collection')" class="w-full text-left p-6 glass-panel border-yellow-500/50 hover:bg-yellow-900/50 transition group">
+                    <div class="flex items-center gap-4">
+                        <div class="bg-yellow-900/30 p-3 rounded-lg group-hover:scale-110 transition"><i class="fas fa-swatchbook text-yellow-400 text-2xl"></i></div>
+                        <div><h3 class="font-title text-xl text-white">Koleksi</h3><p class="text-xs text-slate-300">Inspeksi & Jual 3D</p></div>
+                    </div>
+                </button>
+            </div>
+            
+            <!-- SHOP (FIXED BUTTONS) -->
+            <div id="screen-shop" class="p-2 hidden flex flex-col h-full animate-fade">
+                <div class="text-center py-2 mb-2 bg-violet-900/30 rounded"><h3 class="font-title text-white">ITEM SHOP</h3></div>
+                <div id="shop-container" class="grid grid-cols-2 gap-3 p-2 overflow-y-auto pb-32"></div>
+            </div>
+
+            <!-- INVENTORY (QUICK OPEN REMOVED) -->
+            <div id="screen-inventory" class="p-2 hidden animate-fade flex flex-col">
+                <div id="inventory-container" class="grid grid-cols-2 gap-3 p-2 pb-24"></div>
+            </div>
+            
+            <!-- COLLECTION -->
+            <div id="screen-collection" class="p-2 hidden animate-fade">
+                <div class="flex gap-1 p-2 overflow-x-auto no-scrollbar">
+                    <button onclick="window.filterCollection('all')" class="bg-slate-700 text-white px-3 py-1 rounded-full text-xs whitespace-nowrap hover:bg-slate-600">Semua</button>
+                    <button onclick="window.filterCollection('rarity_desc')" class="bg-slate-700 text-white px-3 py-1 rounded-full text-xs whitespace-nowrap hover:bg-slate-600">Rarity ⬆</button>
+                    <button onclick="window.filterCollection('rarity_asc')" class="bg-slate-700 text-white px-3 py-1 rounded-full text-xs whitespace-nowrap hover:bg-slate-600">Rarity ⬇</button>
+                    <button onclick="window.filterCollection('value')" class="bg-slate-700 text-white px-3 py-1 rounded-full text-xs whitespace-nowrap hover:bg-slate-600">Harga</button>
+                </div>
+                <div class="text-center text-xs text-slate-400 my-1"><i class="fas fa-hand-pointer"></i> Ketuk kartu untuk Inspeksi</div>
+                <div id="collection-container" class="grid grid-cols-3 gap-2 p-2 pb-24"></div>
+            </div>
+            
+            <!-- MISSIONS -->
+            <div id="screen-missions" class="p-4 hidden animate-fade">
+                <div id="missions-container" class="space-y-4 pb-24"></div>
+            </div>
+            
+            <!-- OPENING ANIMATION -->
+            <div id="screen-opening" class="hidden h-full flex flex-col items-center justify-center p-6 bg-slate-900 absolute inset-0 z-50">
+                <h3 class="font-title text-2xl text-white mb-4">Membuka...</h3>
+                
+                <div id="crate-opener-anim" class="hidden w-full h-64 overflow-hidden relative animated-border">
+                    <div class="absolute inset-0 bg-slate-800 p-4 flex items-center transition-all duration-300" id="crate-anim-inner">
+                        <div class="flex transition-transform duration-5000 ease-out" id="crate-anim-reel"></div>
+                    </div>
+                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-32 w-1 bg-cyan-400 z-10 shadow-lg"></div>
+                </div>
+
+                <div id="tcg-opener-anim" class="hidden w-56 h-80 opening-card-container">
+                    <div class="opening-card-inner">
+                        <div class="opening-card-front bg-gradient-to-br from-blue-700 to-purple-900 flex items-center justify-center rounded-xl border-2 border-white/20">
+                            <i class="fas fa-magic text-6xl text-cyan-300"></i>
+                        </div>
+                        <div class="opening-card-back bg-slate-800 p-2 border-2 border-cyan-500" id="tcg-reveal-card"></div>
+                    </div>
+                </div>
+
+                <button id="opening-reveal-btn" onclick="window.revealItem()" class="hidden mt-6 bg-yellow-500 text-black font-bold py-3 px-8 rounded-lg shadow-lg animate-bounce">UNGKAP!</button>
+                <button id="opening-close-btn" onclick="window.closeOpeningScreen()" class="hidden mt-6 bg-slate-700 text-white font-bold py-3 px-8 rounded-lg">Tutup</button>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div id="footer-nav" class="flex-shrink-0 p-2 bg-slate-900/90 border-t border-violet-900/50 flex justify-around items-center hidden backdrop-blur-md">
+            <button onclick="window.navigateTo('hub')" class="p-3 text-slate-400 hover:text-white transition"><i class="fas fa-home text-2xl"></i></button>
+            <button onclick="window.navigateTo('shop')" class="p-3 text-slate-400 hover:text-white transition"><i class="fas fa-store text-2xl"></i></button>
+            <button onclick="window.navigateTo('inventory')" class="p-3 text-slate-400 hover:text-white transition"><i class="fas fa-boxes text-2xl"></i></button>
+            <button onclick="window.navigateTo('collection')" class="p-3 text-slate-400 hover:text-white transition"><i class="fas fa-swatchbook text-2xl"></i></button>
+        </div>
+    </div>
+    
+    <!-- MODAL: INSPECT -->
+    <div id="inspect-modal" class="hidden fixed inset-0 bg-black/95 flex flex-col items-center justify-center p-4 z-[90] backdrop-blur-xl" onclick="if(event.target===this)window.closeInspect()">
+        <div class="w-full max-w-sm flex flex-col items-center relative h-full justify-between py-10">
+            <div class="absolute top-4 right-0 p-2 z-50">
+                <button onclick="window.closeInspect()" class="text-white bg-slate-800 rounded-full w-10 h-10 flex items-center justify-center shadow-lg border border-white/20"><i class="fas fa-times text-lg"></i></button>
+            </div>
+            <div class="text-center z-10 mt-4">
+                <h2 id="inspect-name" class="font-title text-3xl text-white tracking-widest drop-shadow-md">ITEM</h2>
+                <span id="inspect-rarity" class="text-xs uppercase font-bold tracking-[0.2em] px-3 py-1 bg-slate-800 rounded border border-white/20 mt-2 inline-block">RARITY</span>
+            </div>
+            <div class="inspect-scene my-auto" id="inspect-scene">
+                <div class="inspect-card flex items-center justify-center bg-slate-900 border-2" id="inspect-card-el">
+                    <div class="text-8xl drop-shadow-2xl filter" id="inspect-icon">?</div>
+                    <div id="inspect-fx" class="absolute inset-0 pointer-events-none mix-blend-screen"></div>
+                </div>
+            </div>
+            <p class="text-[10px] text-slate-500 mb-2 animate-pulse text-center"><i class="fas fa-arrows-alt-h"></i> GESER UNTUK MEMUTAR</p>
+            <div class="w-full bg-slate-900 p-5 rounded-2xl border border-white/10 text-center z-50 shadow-2xl relative">
+                <p id="inspect-desc" class="text-sm text-slate-300 italic mb-4">...</p>
+                <div class="flex justify-center items-center bg-black/30 p-3 rounded-lg">
+                    <div class="text-center">
+                        <p class="text-[10px] text-slate-500 uppercase tracking-wider">Nilai Pasar</p>
+                        <div class="flex items-center gap-1 justify-center">
+                            <i class="fas fa-gem text-yellow-400 text-xs"></i>
+                            <p class="text-xl font-bold text-white font-mono" id="inspect-price">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- MODAL: SELL CONFIRMATION -->
+    <div id="sell-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[99]" onclick="if(event.target===this)this.classList.add('hidden')">
+         <div class="glass-panel p-6 w-full max-w-xs text-center border-2 border-red-500/30">
+            <h3 class="text-lg text-white mb-4 font-bold">Jual Item?</h3>
+            <p class="text-sm text-slate-300 mb-2">Anda akan menerima:</p>
+            <div class="flex items-center justify-center gap-2 mb-6">
+                <i class="fas fa-gem text-yellow-400 text-2xl"></i>
+                <p class="text-3xl font-bold text-white font-mono" id="sell-price-display">0</p>
+            </div>
+            <div class="flex gap-4">
+                <button onclick="document.getElementById('sell-modal').classList.add('hidden')" class="flex-1 bg-slate-700 text-white py-3 rounded-lg font-bold">Batal</button>
+                <button id="sell-confirm-btn" class="flex-1 bg-red-600 hover:bg-red-500 text-white py-3 rounded-lg font-bold shadow-lg">JUAL!</button>
+            </div>
+         </div>
+    </div>
+    
+    <!-- MODAL: STATS -->
+    <div id="stats-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-2 z-50" onclick="if(event.target===this)this.classList.add('hidden')">
+         <div class="glass-panel w-full max-w-lg h-[80vh] flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-white/10 flex justify-between items-center bg-black/40">
+                <h3 class="font-title text-xl text-cyan-400">Papan Peringkat</h3>
+                <button onclick="document.getElementById('stats-modal').classList.add('hidden')" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="flex-grow overflow-y-auto p-4">
+                <div class="grid grid-cols-2 gap-3 text-left mb-6">
+                    <div class="bg-slate-900/50 p-3 rounded-lg border border-slate-700">
+                        <p class="text-[10px] text-slate-400 uppercase">Gems Dihabiskan</p>
+                        <p class="text-lg font-mono text-yellow-400" id="stat-spent">0</p>
+                    </div>
+                    <div class="bg-slate-900/50 p-3 rounded-lg border border-slate-700">
+                        <p class="text-[10px] text-slate-400 uppercase">Crate Dibuka</p>
+                        <p class="text-lg font-mono text-violet-400" id="stat-opened">0</p>
+                    </div>
+                    <div class="bg-slate-900/50 p-3 rounded-lg col-span-2 border border-slate-700 flex justify-between items-center">
+                        <div>
+                            <p class="text-[10px] text-slate-400 uppercase">Luck Grade</p>
+                            <p class="text-xl font-bold" id="stat-luck">F</p>
+                        </div>
+                        <div class="text-right">
+                             <p class="text-[10px] text-slate-400 uppercase">Best Drop</p>
+                             <p class="text-sm font-bold text-white" id="stat-best">None</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <h4 class="text-white font-title text-sm mb-3 border-l-4 border-yellow-500 pl-2">TOP COLLECTORS (LIVE)</h4>
+                    <div class="space-y-2" id="leaderboard-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: DAILY -->
+    <div id="daily-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[80]" onclick="if(event.target===this)this.classList.add('hidden')">
+        <div class="glass-panel p-6 w-full max-w-sm text-center">
+            <h3 class="font-title text-2xl text-green-400 mb-2">DAILY LOGIN</h3>
+            <div id="daily-grid" class="grid grid-cols-5 gap-2 mb-6 max-h-60 overflow-y-auto"></div>
+            <button id="btn-claim-daily" onclick="window.claimDailyReward()" class="w-full bg-green-600 text-white font-bold py-3 rounded-lg shadow-lg animate-pulse">KLAIM HADIAH</button>
+            <button onclick="document.getElementById('daily-modal').classList.add('hidden')" class="w-full text-slate-500 py-2 mt-2 text-sm">Tutup</button>
+        </div>
+    </div>
+
+    <!-- MODAL: REDEEM -->
+    <div id="redeem-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[80]" onclick="if(event.target===this)this.classList.add('hidden')">
+        <div class="glass-panel p-6 w-full max-w-sm text-center">
+            <h3 class="font-title text-2xl text-yellow-400 mb-2">REDEEM CODE</h3>
+            <input type="text" id="redeem-input" placeholder="Masukkan Kode..." class="w-full bg-slate-900 border border-slate-700 rounded p-3 text-white mb-4 text-center font-mono">
+            <button onclick="window.submitRedeem()" class="w-full bg-yellow-600 text-black font-bold py-3 rounded-lg hover:bg-yellow-500 transition">GUNAKAN KODE</button>
+            <button onclick="document.getElementById('redeem-modal').classList.add('hidden')" class="w-full text-slate-500 py-2 mt-2 text-sm">Tutup</button>
+        </div>
+    </div>
+
+    <!-- MODAL: PROFILE -->
+    <div id="profile-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[80]" onclick="if(event.target===this)this.classList.add('hidden')">
+        <div class="glass-panel p-6 w-full max-w-sm text-center">
+            <h3 class="font-title text-2xl text-purple-400 mb-2">PROFIL</h3>
+            <div id="profile-badges" class="flex justify-center gap-1 mb-4 h-6"></div>
+            <div class="flex justify-center mb-6">
+                <div class="w-24 h-24 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-4xl border-4 border-slate-700" id="profile-avatar-display">👤</div>
+            </div>
+            <div class="grid grid-cols-4 gap-2 mb-4">
+                <button onclick="window.setAvatar('👤')" class="p-2 bg-slate-800 rounded hover:bg-slate-700">👤</button>
+                <button onclick="window.setAvatar('🤖')" class="p-2 bg-slate-800 rounded hover:bg-slate-700">🤖</button>
+                <button onclick="window.setAvatar('👽')" class="p-2 bg-slate-800 rounded hover:bg-slate-700">👽</button>
+                <button onclick="window.setAvatar('🤴')" class="p-2 bg-slate-800 rounded hover:bg-slate-700">🤴</button>
+                <button onclick="window.setAvatar('🕵️')" class="p-2 bg-slate-800 rounded hover:bg-slate-700">🕵️</button>
+                <button onclick="window.setAvatar('🧙‍♂️')" class="p-2 bg-slate-800 rounded hover:bg-slate-700">🧙‍♂️</button>
+                <button onclick="window.setAvatar('👹')" class="p-2 bg-slate-800 rounded hover:bg-slate-700">👹</button>
+                <button onclick="window.setAvatar('🐱')" class="p-2 bg-slate-800 rounded hover:bg-slate-700">🐱</button>
+            </div>
+            <div class="mb-6">
+                 <p class="text-xs text-slate-500 mb-1">Pilih Gelar</p>
+                 <select id="title-select" onchange="window.setTitle(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm">
+                     <option value="Novice">Novice</option>
+                     <option value="Collector">Collector (Lv 5)</option>
+                     <option value="Hoarder">Hoarder (Lv 10)</option>
+                     <option value="Vault Master">Vault Master (Lv 20)</option>
+                     <option value="Archon">Archon (Lv 50)</option>
+                 </select>
+            </div>
+            <button onclick="document.getElementById('profile-modal').classList.add('hidden')" class="bg-slate-700 text-white font-bold py-2 px-6 rounded-lg w-full">Tutup</button>
+        </div>
+    </div>
+
+    <!-- MODAL: SETTINGS -->
+    <div id="settings-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50" onclick="if(event.target===this)this.classList.add('hidden')">
+         <div class="glass-panel p-6 w-full max-w-sm text-center">
+            <h3 class="font-title text-2xl text-white mb-4">Pengaturan</h3>
+            <button onclick="window.resetGame()" class="bg-red-600 text-white font-bold py-2 px-6 rounded-lg w-full mb-3">RESET DATA</button>
+            <button onclick="document.getElementById('settings-modal').classList.add('hidden')" class="bg-slate-700 text-white font-bold py-2 px-6 rounded-lg w-full">Tutup</button>
+        </div>
+    </div>
+
+    <!-- MODAL: ABOUT -->
+    <div id="about-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50" onclick="if(event.target===this)this.classList.add('hidden')">
+         <div class="bg-gray-800 rounded-2xl p-6 w-full max-w-md text-center shadow-2xl overflow-y-auto max-h-[90vh] border border-violet-500/30">
+            <div class="mb-4 flex justify-center">
+                 <i class="fas fa-fingerprint text-5xl text-white"></i>
+            </div>
+            <h3 class="text-2xl font-bold mb-2 text-white font-title">ARCHON V16.0</h3>
+            <p class="text-violet-400 text-sm mb-4">Ultra Secret Horizon</p>
+            
+            <div class="text-left bg-black/30 p-4 rounded-lg mb-4 text-sm text-gray-300 space-y-2">
+                <p>Archon adalah simulasi kolektor modern di mana Anda bisa merasakan sensasi membuka peti misterius, mengumpulkan item langka, dan membangun kekayaan digital.</p>
+                <div class="border-t border-white/10 my-2"></div>
+                <p class="font-bold text-white">Changelog V16.0:</p>
+                <ul class="list-disc pl-4 text-xs text-gray-400">
+                    <li><strong>REMOVED:</strong> Fitur "Quick Open" dihapus karena tidak stabil.</li>
+                    <li><strong>FIXED:</strong> Tampilan Toko diperbaiki (Tombol beli tidak lagi tenggelam).</li>
+                    <li><strong>NEW RARITY:</strong> <strong>ULTRA SECRET</strong> (Tingkatan Tertinggi!).</li>
+                    <li><strong>REBALANCE:</strong> Urutan Rarity: Common > Rare > Epic > Legendary > Mythic > Exotic > Divine > Ultra Secret.</li>
+                </ul>
+            </div>
+            <button onclick="document.getElementById('about-modal').classList.add('hidden')" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-6 rounded-lg w-full">Tutup</button>
+        </div>
+    </div>
+    
+    <!-- MODAL: ITEM ACQUIRED -->
+    <div id="item-acquired-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[60]" onclick="if(event.target===this)this.classList.add('hidden')">
+         <div class="glass-panel p-6 w-full max-w-sm text-center" id="item-acquired-content"></div>
+    </div>
+
+    <!-- Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, setDoc, updateDoc, arrayUnion, arrayRemove, writeBatch, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const ICON_URL = (bgColor, fgColor, icon) => `https://placehold.co/150x150/${bgColor}/${fgColor}?text=${icon}&font=noto-emoji`;
+        const TCG_URL = (bgColor, fgColor, icon) => `https://placehold.co/100x150/${bgColor}/${fgColor}?text=${icon}&font=noto-emoji`;
+        
+        const EMOJI_MAP = {
+            'item_mouse': '🖱️', 'item_keyboard': '⌨️', 'item_headset': '🎧', 'item_gpu': '🖥️',
+            'item_mic': '🎙️', 'item_monitor': '🖥️', 'item_chair': '💺', 'item_controller': '🎮',
+            'item_vr': '🥽', 'item_drone_pro': '🚁', 'item_cam': '📷', 'item_router': '📡',
+            'item_sneaker': '👟', 'item_watch': '⌚', 'item_console': '🎮', 'item_hoodie': '🧥', 'item_bag': '👜',
+            'item_ring': '💍', 'item_chain': '⛓️', 'item_hat': '🧢', 'item_desk': '🧱', 'item_nano_suit': '🥋',
+            'card_spark': '⚡', 'card_geodude': '🪨', 'card_ignis': '🔥', 'card_leviathan': '💧', 'card_golem': '🗿',
+            'card_wisp': '🌬️', 'card_treant': '🌳', 'card_volcano': '🌋',
+            'card_cyborg': '🤖', 'card_protocol': '📡', 'card_drone': '🛸', 'card_mecha': '🦾', 'card_ai_chip': '💾',
+            'card_elf': '🧝', 'card_orc': '👹', 'card_celestial': '✨', 'card_phoenix': '🦅', 'card_dragon_egg': '🥚', 'card_wizard': '🧙‍♂️',
+            // DIVINE, EXOTIC, ULTRA SECRET
+            'item_holy_grail': '🏆', 'item_angel_wings': '🪽', 'item_zeus_bolt': '⚡', 'item_halo': '😇',
+            'item_glitch_katana': '⚔️', 'item_multiverse_map': '🗺️', 'item_singularity': '⚫',
+            'item_source_code': '🧬', 'item_infinity_gauntlet': '🥊', 'item_admin_access': '🔑'
+        };
+
+        const COLLECTION_DB = {
+            'item_mouse': { name: "Mouse Gaming", rarity: "Common", sell: 20, icon: ICON_URL('1e293b', '94a3b8', '🖱️'), desc: "Mouse standar." },
+            'item_keyboard': { name: "Keyboard Mech", rarity: "Rare", sell: 80, icon: ICON_URL('3b82f6', 'e0e7ff', '⌨️'), desc: "Switch biru berisik." },
+            'item_headset': { name: "Headset Pro", rarity: "Rare", sell: 100, icon: ICON_URL('3b82f6', 'e0e7ff', '🎧'), desc: "Suara 7.1." },
+            'item_mic': { name: "Stream Mic", rarity: "Rare", sell: 120, icon: ICON_URL('475569', 'f1f5f9', '🎙️'), desc: "Mic kondensor." },
+            'item_monitor': { name: "4K Monitor", rarity: "Epic", sell: 450, icon: ICON_URL('0f172a', '38bdf8', '🖥️'), desc: "Refresh rate 144Hz." },
+            'item_chair': { name: "Gaming Chair", rarity: "Epic", sell: 380, icon: ICON_URL('7f1d1d', 'fca5a5', '💺'), desc: "Kursi RGB." },
+            'item_desk': { name: "Gaming Desk", rarity: "Epic", sell: 400, icon: ICON_URL('000000', 'ffffff', '🧱'), desc: "Meja karbon." },
+            'item_controller': { name: "Pro Controller", rarity: "Rare", sell: 90, icon: ICON_URL('312e81', 'a5b4fc', '🎮'), desc: "Anti-drift." },
+            'item_gpu': { name: "RTX 9090", rarity: "Legendary", sell: 1500, icon: ICON_URL('22d3ee', '0f172a', '🖥️'), desc: "Monster grafis." },
+            'item_vr': { name: "VR Headset", rarity: "Epic", sell: 600, icon: ICON_URL('000000', 'ec4899', '🥽'), desc: "Dunia virtual nyata." },
+            'item_drone_pro': { name: "Cinema Drone", rarity: "Legendary", sell: 1200, icon: ICON_URL('1f2937', '9ca3af', '🚁'), desc: "Kamera 8K terbang." },
+            'item_cam': { name: "DSLR Cam", rarity: "Epic", sell: 500, icon: ICON_URL('18181b', 'd4d4d8', '📷'), desc: "Foto tajam." },
+            'item_router': { name: "WiFi 7 Router", rarity: "Rare", sell: 150, icon: ICON_URL('1e3a8a', '60a5fa', '📡'), desc: "Kecepatan cahaya." },
+
+            'item_sneaker': { name: "Hype Sneaker", rarity: "Epic", sell: 350, icon: ICON_URL('ef4444', 'ffffff', '👟'), desc: "Edisi terbatas." },
+            'item_hoodie': { name: "Street Hoodie", rarity: "Rare", sell: 150, icon: ICON_URL('171717', 'a3a3a3', '🧥'), desc: "Oversized nyaman." },
+            'item_bag': { name: "Luxury Bag", rarity: "Legendary", sell: 1800, icon: ICON_URL('831843', 'fbcfe8', '👜'), desc: "Kulit asli." },
+            'item_watch': { name: "Bling Watch", rarity: "Mythic", sell: 900, icon: ICON_URL('eab308', '000000', '⌚'), desc: "Emas murni." },
+            'item_console': { name: "NextGen Console", rarity: "Epic", sell: 400, icon: ICON_URL('10b981', 'ffffff', '🎮'), desc: "Support 8K." },
+            'item_ring': { name: "Diamond Ring", rarity: "Mythic", sell: 2000, icon: ICON_URL('0f172a', '22d3ee', '💍'), desc: "Kilauan abadi." },
+            'item_chain': { name: "Gold Chain", rarity: "Epic", sell: 550, icon: ICON_URL('451a03', 'fbbf24', '⛓️'), desc: "Berat dan mahal." },
+            'item_hat': { name: "Vintage Cap", rarity: "Rare", sell: 80, icon: ICON_URL('3f6212', 'bef264', '🧢'), desc: "Gaya klasik." },
+
+            'card_spark': { name: "Sparkling", rarity: "Common", set: "Elemental", sell: 10, icon: TCG_URL('f59e0b', '422006', '⚡'), desc: "Percikan." },
+            'card_geodude': { name: "Geo-Block", rarity: "Common", set: "Elemental", sell: 10, icon: TCG_URL('a16207', 'fffbeb', '🪨'), desc: "Batu." },
+            'card_golem': { name: "Stone Golem", rarity: "Rare", set: "Elemental", sell: 85, icon: TCG_URL('57534e', 'd6d3d1', '🗿'), desc: "Raksasa batu." },
+            'card_wisp': { name: "Wind Wisp", rarity: "Common", set: "Elemental", sell: 15, icon: TCG_URL('a5f3fc', '0891b2', '🌬️'), desc: "Roh angin." },
+            'card_treant': { name: "Elder Treant", rarity: "Epic", set: "Elemental", sell: 400, icon: TCG_URL('052e16', '22c55e', '🌳'), desc: "Pohon hidup." },
+            'card_ignis': { name: "Ignis Dragon", rarity: "Mythic", set: "Elemental", sell: 800, icon: TCG_URL('dc2626', 'ffff00', '🔥'), desc: "Naga api." },
+            'card_leviathan': { name: "Leviathan", rarity: "Mythic", set: "Elemental", sell: 800, icon: TCG_URL('2563eb', 'ffffff', '💧'), desc: "Monster laut." },
+            'card_volcano': { name: "Volcano Spirit", rarity: "Legendary", set: "Elemental", sell: 1500, icon: TCG_URL('7f1d1d', 'f87171', '🌋'), desc: "Kemarahan bumi." },
+
+            'card_cyborg': { name: "Cyborg P-0", rarity: "Rare", set: "Cyber", sell: 70, icon: TCG_URL('a855f7', '000000', '🤖'), desc: "Setengah robot." },
+            'card_protocol': { name: "Protocol: Zero", rarity: "Legendary", set: "Cyber", sell: 2000, icon: TCG_URL('22d3ee', '0f172a', '📡'), desc: "Kode rahasia." },
+            'card_drone': { name: "Recon Drone", rarity: "Common", set: "Cyber", sell: 15, icon: TCG_URL('64748b', 'e0e7ff', '🛸'), desc: "Drone murah." },
+            'card_mecha': { name: "Battle Mecha", rarity: "Epic", set: "Cyber", sell: 500, icon: TCG_URL('1e293b', '94a3b8', '🦾'), desc: "Mesin perang." },
+            'card_ai_chip': { name: "Sentient Chip", rarity: "Mythic", set: "Cyber", sell: 1200, icon: TCG_URL('022c22', '34d399', '💾'), desc: "AI hidup." },
+            'item_nano_suit': { name: "Nano Suit", rarity: "Exotic", sell: 3200, icon: ICON_URL('000000', '00ff00', '🥋'), desc: "Baju pelindung tak terlihat." },
+
+            'card_elf': { name: "Forest Elf", rarity: "Rare", set: "Fantasy", sell: 75, icon: TCG_URL('166534', 'a7f3d0', '🧝'), desc: "Penjaga hutan." },
+            'card_orc': { name: "War Chief Orc", rarity: "Rare", set: "Fantasy", sell: 80, icon: TCG_URL('7f1d1d', 'fecaca', '👹'), desc: "Pemimpin orc." },
+            'card_wizard': { name: "Grand Wizard", rarity: "Epic", set: "Fantasy", sell: 450, icon: TCG_URL('312e81', 'c7d2fe', '🧙‍♂️'), desc: "Penyihir agung." },
+            'card_dragon_egg': { name: "Ancient Egg", rarity: "Legendary", set: "Fantasy", sell: 1600, icon: TCG_URL('4c1d95', 'f0abfc', '🥚'), desc: "Telur naga." },
+            'card_phoenix': { name: "Phoenix", rarity: "Mythic", set: "Fantasy", sell: 850, icon: TCG_URL('ea580c', 'ffedd5', '🦅'), desc: "Burung api." },
+            'card_celestial': { name: "Celestial Being", rarity: "Legendary", set: "Fantasy", sell: 2500, icon: TCG_URL('f0abfc', '3b0764', '✨'), desc: "Makhluk cahaya." },
+
+            // NEW DIVINE, EXOTIC & ULTRA SECRET
+            'item_holy_grail': { name: "Holy Grail", rarity: "Divine", sell: 5000, icon: ICON_URL('ffffff', 'fbbf24', '🏆'), desc: "Cawan suci." },
+            'item_angel_wings': { name: "Angel Wings", rarity: "Divine", sell: 4500, icon: ICON_URL('e0f2fe', '38bdf8', '🪽'), desc: "Sayap malaikat." },
+            'item_zeus_bolt': { name: "Zeus Bolt", rarity: "Divine", sell: 4800, icon: ICON_URL('fef08a', 'ca8a04', '⚡'), desc: "Petir dewa." },
+            'item_halo': { name: "God's Halo", rarity: "Divine", sell: 6000, icon: ICON_URL('ffff00', 'ffffff', '😇'), desc: "Lingkaran suci." },
+            
+            'item_glitch_katana': { name: "Glitch Katana", rarity: "Exotic", sell: 3500, icon: ICON_URL('000000', 'd946ef', '⚔️'), desc: "Senjata rusak." },
+            'item_multiverse_map': { name: "Multiverse Map", rarity: "Exotic", sell: 3800, icon: ICON_URL('1e1b4b', '818cf8', '🗺️'), desc: "Peta dimensi." },
+            'item_singularity': { name: "Singularity", rarity: "Exotic", sell: 4000, icon: ICON_URL('000000', 'ffffff', '⚫'), desc: "Black hole." },
+
+            // ULTRA SECRET
+            'item_source_code': { name: "The Source Code", rarity: "Ultra Secret", sell: 99999, icon: ICON_URL('000000', '00ff00', '🧬'), desc: "Kode pembentuk alam semesta." },
+            'item_infinity_gauntlet': { name: "Infinity Gauntlet", rarity: "Ultra Secret", sell: 88888, icon: ICON_URL('b91c1c', 'fbbf24', '🥊'), desc: "Kekuatan tak terbatas." },
+            'item_admin_access': { name: "Admin Key", rarity: "Ultra Secret", sell: 77777, icon: ICON_URL('000000', 'ff0000', '🔑'), desc: "Kunci segalanya." }
+        };
+        
+        const ITEM_SHOP_DB = [
+            { id: 'tech_box_1', name: "Tech Crate", price: 100, type: 'crate', pool: ['item_mouse', 'item_keyboard', 'item_headset', 'item_mic', 'item_gpu', 'item_vr', 'item_cam', 'item_router', 'item_desk'], icon: ICON_URL('475569', 'e2e8f0', '💻') },
+            { id: 'gaming_box_1', name: "Gaming Setup", price: 300, type: 'crate', pool: ['item_console', 'item_monitor', 'item_chair', 'item_controller', 'item_keyboard', 'item_drone_pro', 'item_nano_suit'], icon: ICON_URL('10b981', 'ffffff', '🎮') },
+            { id: 'hype_box_1', name: "Hypebeast Crate", price: 350, type: 'crate', pool: ['item_sneaker', 'item_watch', 'item_hoodie', 'item_bag', 'item_mouse', 'item_ring', 'item_chain', 'item_hat'], icon: ICON_URL('ef4444', 'ffffff', '👟') },
+            { id: 'divine_box_1', name: "Divine Crate", price: 2500, type: 'crate', pool: ['item_holy_grail', 'item_angel_wings', 'item_zeus_bolt', 'item_glitch_katana', 'item_multiverse_map', 'item_singularity', 'item_gpu', 'item_halo', 'item_source_code', 'item_infinity_gauntlet'], icon: ICON_URL('fbbf24', 'ffffff', '🌟') },
+            { id: 'tcg_pack_1', name: "Elemental Pack", price: 50, type: 'tcg', pool: ['card_spark', 'card_geodude', 'card_golem', 'card_ignis', 'card_leviathan', 'card_wisp', 'card_treant', 'card_volcano'], icon: TCG_URL('b91c1c', 'fef2f2', '🔥') },
+            { id: 'tcg_pack_2', name: "Cyber Pack", price: 150, type: 'tcg', pool: ['card_cyborg', 'card_protocol', 'card_drone', 'item_gpu', 'card_mecha', 'card_ai_chip', 'item_admin_access'], icon: TCG_URL('a855f7', 'f3e8ff', '🤖') },
+            { id: 'tcg_pack_3', name: "Fantasy Pack", price: 100, type: 'tcg', pool: ['card_elf', 'card_orc', 'card_phoenix', 'card_celestial', 'card_geodude', 'card_wizard', 'card_dragon_egg', 'item_holy_grail'], icon: TCG_URL('166534', 'a7f3d0', '🧝') }
+        ];
+        
+        const MISSION_DB = [
+            { id: 'm_tech_1', name: "PC Builder", desc: "Kumpulkan Mouse, Keyboard, dan Headset.", required: ['item_mouse', 'item_keyboard', 'item_headset'], reward: 500 },
+            { id: 'm_mythic_1', name: "Mythic Duo", desc: "Dapatkan Ignis Dragon DAN Leviathan.", required: ['card_ignis', 'card_leviathan'], reward: 5000 },
+            { id: 'm_fantasy_1', name: "Fantasy Legend", desc: "Kumpulkan Phoenix dan Celestial Being.", required: ['card_phoenix', 'card_celestial'], reward: 3000 },
+            { id: 'm_secret_1', name: "THE ONE", desc: "Dapatkan The Source Code.", required: ['item_source_code'], reward: 50000 },
+        ];
+
+        const RIVALS_DB = [
+            { name: "Sultan_Indo", avatar: "🤴", basePoints: 45000, growth: 10, reward: 500 },
+            { name: "Gacha_Addict", avatar: "🎰", basePoints: 32000, growth: 8, reward: 300 },
+            { name: "Lucky_Luke", avatar: "🤠", basePoints: 20000, growth: 5, reward: 200 },
+            { name: "NoobMaster69", avatar: "🎮", basePoints: 5000, growth: 2, reward: 100 },
+            { name: "Archon_Bot", avatar: "🤖", basePoints: 1000, growth: 1, reward: 50 }
+        ];
+
+        // GLOBAL STATE
+        let db, auth;
+        let userId = null;
+        let userDocRef = null;
+        let currentFilter = 'all'; 
+        let currentInspectedId = null;
+        let itemToSellId = null; 
+        
+        let GAME_STATE = {
+            currency: 1000,
+            inventory_unopened: [], 
+            inventory_opened: [], 
+            missions_completed: [],
+            stats: { spent: 0, opened: 0, best_rarity: 0 },
+            daily: { last_claim: null, streak: 0, claimed_today: false },
+            leveling: { level: 1, xp: 0, max_xp: 500 },
+            redeemed_codes: [],
+            rivals_defeated: [],
+            profile: { avatar: '👤', title: 'Novice', badges: [] } 
+        };
+
+        // SOUND
+        let audioReady = false;
+        const sfx = {
+            click: new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.1 } }).toDestination(),
+            buy: new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.2 } }).toDestination(),
+            sell: new Tone.Synth({ oscillator: { type: 'sawtooth' }, envelope: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.1 } }).toDestination(),
+            open_start: new Tone.NoiseSynth({ noise: { type: 'pink' }, envelope: { attack: 0.1, decay: 0.5, sustain: 0.1, release: 0.5 } }).toDestination(),
+            open_reveal: new Tone.Synth({ oscillator: { type: 'fmtriangle' }, envelope: { attack: 0.05, decay: 0.5, sustain: 0.2, release: 0.5 } }).toDestination(),
+            levelup: new Tone.PolySynth().toDestination(),
+            reward: new Tone.MetalSynth({ harmonicity: 12, resonance: 800, modulationIndex: 20, envelope: { decay: 0.4, release: 0.2 } }).toDestination()
+        };
+        sfx.open_start.volume.value = -10;
+        
+        async function playSfx(sound) {
+            if (!audioReady) { await Tone.start(); audioReady = true; }
+            if (sound === 'levelup' || sound === 'reward') { sfx.levelup.triggerAttackRelease(["C4", "E4", "G4", "C5"], "8n"); }
+            else if (sfx[sound]) { sfx[sound].triggerAttackRelease(sound === 'buy' ? 'C5' : 'C4', '8n'); }
+        }
+        
+        // PARTICLES ENGINE
+        function initParticles() {
+            const canvas = document.getElementById('particles-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            const particles = [];
+            for(let i=0; i<50; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 2,
+                    speedY: Math.random() * 0.5 - 0.25,
+                    speedX: Math.random() * 0.5 - 0.25
+                });
+            }
+            
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                particles.forEach(p => {
+                    p.x += p.speedX;
+                    p.y += p.speedY;
+                    if(p.x < 0) p.x = canvas.width;
+                    if(p.x > canvas.width) p.x = 0;
+                    if(p.y < 0) p.y = canvas.height;
+                    if(p.y > canvas.height) p.y = 0;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        // INIT
+        document.addEventListener('DOMContentLoaded', async () => {
+            initParticles();
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+            const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        userDocRef = doc(db, 'artifacts', appId, 'users', userId);
+                        setupUserListener();
+                    }
+                });
+
+                if (initialAuthToken) await signInWithCustomToken(auth, initialAuthToken);
+                else await signInAnonymously(auth);
+
+            } catch (e) {
+                console.error("Firebase Init Error:", e);
+                document.getElementById('loading-overlay').innerText = "KONEKSI GAGAL. Coba refresh.";
+            }
+        });
+
+        async function setupUserListener() {
+            onSnapshot(userDocRef, async (docSnap) => {
+                if (!docSnap.exists()) {
+                    await setDoc(userDocRef, {
+                        currency: 1000,
+                        inventory_unopened: [],
+                        inventory_opened: [],
+                        missions_completed: [],
+                        stats: { spent: 0, opened: 0, best_rarity: 0 },
+                        daily: { last_claim: null, streak: 0, claimed_today: false },
+                        leveling: { level: 1, xp: 0, max_xp: 500 },
+                        redeemed_codes: [],
+                        rivals_defeated: [],
+                        profile: { avatar: '👤', title: 'Novice', badges: [] }
+                    });
+                } else {
+                    const data = docSnap.data();
+                    if(!data.stats) data.stats = { spent: 0, opened: 0, best_rarity: 0 };
+                    if(!data.daily) data.daily = { last_claim: null, streak: 0, claimed_today: false };
+                    if(!data.leveling) data.leveling = { level: 1, xp: 0, max_xp: 500 };
+                    if(!data.redeemed_codes) data.redeemed_codes = [];
+                    if(!data.rivals_defeated) data.rivals_defeated = [];
+                    if(!data.profile) data.profile = { avatar: '👤', title: 'Novice', badges: [] };
+                    
+                    GAME_STATE = data;
+                }
+                updateUI();
+                document.getElementById('loading-overlay').classList.add('hidden');
+            });
+        }
+        
+        function updateUI() {
+            document.getElementById('user-currency').innerText = GAME_STATE.currency;
+            document.getElementById('user-level-badge').innerText = `LV ${GAME_STATE.leveling.level}`;
+            const xpPercent = (GAME_STATE.leveling.xp / GAME_STATE.leveling.max_xp) * 100;
+            document.getElementById('user-xp-bar').style.width = `${xpPercent}%`;
+            document.getElementById('header-avatar').innerText = GAME_STATE.profile.avatar;
+            document.getElementById('header-title').innerText = GAME_STATE.profile.title;
+            document.getElementById('profile-avatar-display').innerText = GAME_STATE.profile.avatar;
+            
+            const badgeContainer = document.getElementById('profile-badges');
+            if(badgeContainer) {
+                badgeContainer.innerHTML = '';
+                if(GAME_STATE.profile.badges && GAME_STATE.profile.badges.includes('Dev')) {
+                    badgeContainer.innerHTML += `<span class="bg-yellow-500 text-black px-2 py-0.5 rounded text-[10px] font-bold tracking-widest">DEVELOPER</span>`;
+                }
+            }
+
+            const activeScreen = document.querySelector('#content-area > div:not(.hidden)');
+            if (activeScreen) {
+                switch(activeScreen.id) {
+                    case 'screen-shop': window.renderShop(); break;
+                    case 'screen-inventory': window.renderInventory(); break;
+                    case 'screen-collection': window.renderCollection(); break;
+                    case 'screen-missions': window.renderMissions(); break;
+                }
+            }
+        }
+        
+        // LOGIC
+        window.filterCollection = (type) => { playSfx('click'); currentFilter = type; window.renderCollection(); }
+        window.showProfile = () => { window.showModal('profile-modal'); }
+        window.showRedeem = () => { window.showModal('redeem-modal'); }
+        
+        window.setAvatar = async (emoji) => { playSfx('click'); await updateDoc(userDocRef, { "profile.avatar": emoji }); }
+        window.setTitle = async (title) => {
+            const lvl = GAME_STATE.leveling.level;
+            if(title === 'Collector' && lvl < 5) return alert("Butuh Level 5!");
+            if(title === 'Hoarder' && lvl < 10) return alert("Butuh Level 10!");
+            if(title === 'Vault Master' && lvl < 20) return alert("Butuh Level 20!");
+            if(title === 'Archon' && lvl < 50) return alert("Butuh Level 50!");
+            playSfx('click');
+            await updateDoc(userDocRef, { "profile.title": title });
+        }
+
+        window.submitRedeem = async () => {
+            const codeInput = document.getElementById('redeem-input').value.trim();
+            if(!codeInput) return;
+            if(GAME_STATE.redeemed_codes.includes(codeInput)) { return alert("Kode sudah pernah digunakan!"); }
+            
+            let rewards = { gems: 0, items: [] }; 
+            let success = false;
+            let isDevCode = false;
+
+            if (codeInput === 'DenyDev') {
+                rewards.gems = 10000;
+                const mythicPool = Object.keys(COLLECTION_DB).filter(k => COLLECTION_DB[k].rarity === 'Mythic');
+                for(let i=0; i<5; i++) { rewards.items.push(mythicPool[Math.floor(Math.random() * mythicPool.length)]); }
+                success = true;
+                isDevCode = true;
+            } 
+            else if (codeInput === 'Newplayer') { 
+                rewards.gems = 1000; 
+                const pool = Object.keys(COLLECTION_DB).filter(k => COLLECTION_DB[k].rarity === 'Common' || COLLECTION_DB[k].rarity === 'Rare'); 
+                rewards.items.push(pool[Math.floor(Math.random() * pool.length)]); 
+                success = true; 
+            }
+
+            if(success) {
+                playSfx('buy'); 
+                const batch = writeBatch(db);
+                
+                let updateData = {
+                    currency: increment(rewards.gems),
+                    redeemed_codes: arrayUnion(codeInput)
+                };
+
+                if (isDevCode) {
+                    updateData["profile.avatar"] = "👨‍💻";
+                    updateData["profile.title"] = "The Developer";
+                    updateData["profile.badges"] = arrayUnion("Dev");
+                }
+
+                batch.update(userDocRef, updateData);
+                
+                const newItems = rewards.items.map(baseId => ({ uniqueId: `redeemed_${Date.now()}_${Math.random()}`, baseId: baseId }));
+                batch.update(userDocRef, { inventory_opened: arrayUnion(...newItems) });
+                
+                await batch.commit(); 
+                alert(isDevCode ? `WELCOME DEVELOPER!\n+10,000 Gems\n+5 Mythic Items\n+Dev Badge & Profile` : `KODE BERHASIL!\n+${rewards.gems} Gems\n+${rewards.items.length} Item Baru`); 
+                document.getElementById('redeem-modal').classList.add('hidden');
+            } else { 
+                alert("Kode Tidak Valid!"); 
+            }
+        }
+
+        let inspectRotationHandler = null; let inspectRarityLimit = 15;
+
+        window.inspectItem = (uniqueId) => {
+            const item = GAME_STATE.inventory_opened.find(i => i.uniqueId === uniqueId);
+            if(!item) return;
+            currentInspectedId = uniqueId;
+            const itemData = COLLECTION_DB[item.baseId];
+            const emojiIcon = EMOJI_MAP[item.baseId] || '❓';
+            
+            document.getElementById('inspect-name').innerText = itemData.name;
+            document.getElementById('inspect-rarity').innerText = itemData.rarity;
+            document.getElementById('inspect-rarity').className = "text-xs uppercase font-bold tracking-[0.2em] px-3 py-1 rounded border border-white/20 inline-block " + 
+                (itemData.rarity === 'Ultra Secret' ? 'bg-black text-white border-red-500 shadow-[0_0_10px_red]' :
+                (itemData.rarity === 'Divine' ? 'bg-yellow-100 text-yellow-800' :
+                (itemData.rarity === 'Exotic' ? 'bg-pink-900 text-pink-300' :
+                (itemData.rarity === 'Mythic' ? 'bg-yellow-900 text-yellow-300' : 
+                (itemData.rarity === 'Legendary' ? 'bg-cyan-900 text-cyan-300' : 
+                (itemData.rarity === 'Epic' ? 'bg-purple-900 text-purple-300' : 'bg-slate-800 text-slate-300'))))));
+            
+            document.getElementById('inspect-desc').innerText = `"${itemData.desc || 'Tidak ada deskripsi.'}"`;
+            document.getElementById('inspect-price').innerText = itemData.sell;
+            document.getElementById('inspect-icon').innerText = emojiIcon;
+            
+            const cardEl = document.getElementById('inspect-card-el');
+            // Clean up old classes
+            cardEl.className = `inspect-card flex items-center justify-center bg-slate-900 border-2 relative rarity-${itemData.rarity.toLowerCase().replace(' ', '-')}`;
+            
+            const fx = document.getElementById('inspect-fx');
+            // Reset
+            fx.className = "hidden";
+            inspectRarityLimit = 15;
+
+            if(itemData.rarity === 'Ultra Secret') { inspectRarityLimit = 720; fx.className = "absolute inset-0 pointer-events-none mix-blend-color-dodge bg-[url('https://media.giphy.com/media/26tn33aiTi1jkl6H6/giphy.gif')] opacity-20 bg-cover"; }
+            else if(itemData.rarity === 'Divine') { inspectRarityLimit = 360; fx.className = "absolute inset-0 pointer-events-none mix-blend-screen bg-gradient-to-t from-yellow-200/30 to-white/10"; }
+            else if(itemData.rarity === 'Exotic') { inspectRarityLimit = 360; fx.className = "absolute inset-0 pointer-events-none mix-blend-difference bg-gradient-to-r from-pink-500/20 to-cyan-500/20"; }
+            else if(itemData.rarity === 'Mythic') { inspectRarityLimit = 60; fx.className = "absolute inset-0 pointer-events-none mix-blend-screen bg-gradient-to-t from-yellow-500/10 to-transparent"; }
+            else if(itemData.rarity === 'Legendary') { inspectRarityLimit = 180; fx.className = "absolute inset-0 pointer-events-none mix-blend-screen bg-gradient-to-tr from-cyan-500/20 to-transparent"; }
+            else if(itemData.rarity === 'Epic') { inspectRarityLimit = 45; fx.className = "absolute inset-0 pointer-events-none mix-blend-screen bg-gradient-to-t from-purple-500/10 to-transparent"; }
+
+            const scene = document.getElementById('inspect-scene');
+            scene.addEventListener('mousemove', handleInspectMove); scene.addEventListener('touchmove', handleInspectMove);
+            scene.addEventListener('mouseleave', resetInspectRotation); scene.addEventListener('touchend', resetInspectRotation);
+
+            window.showModal('inspect-modal');
+        }
+
+        window.closeInspect = () => {
+             document.getElementById('inspect-modal').classList.add('hidden');
+             resetInspectRotation();
+             const scene = document.getElementById('inspect-scene');
+             scene.removeEventListener('mousemove', handleInspectMove); scene.removeEventListener('touchmove', handleInspectMove);
+             currentInspectedId = null; 
+        }
+
+        function handleInspectMove(e) {
+            const card = document.getElementById('inspect-card-el'); const scene = document.getElementById('inspect-scene'); const rect = scene.getBoundingClientRect();
+            let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const centerX = rect.left + rect.width / 2; const deltaX = clientX - centerX; const percent = deltaX / (rect.width / 2);
+            let rotateY = percent * inspectRarityLimit;
+            if (inspectRarityLimit < 100) { if(rotateY > inspectRarityLimit) rotateY = inspectRarityLimit; if(rotateY < -inspectRarityLimit) rotateY = -inspectRarityLimit; }
+            card.style.transform = `rotateY(${rotateY}deg) scale(1.05)`;
+        }
+        function resetInspectRotation() { const card = document.getElementById('inspect-card-el'); if(card) card.style.transform = `rotateY(0deg) scale(1)`; }
+
+        async function addXP(amount) {
+            let { level, xp, max_xp } = GAME_STATE.leveling;
+            xp += amount;
+            if (xp >= max_xp) {
+                xp -= max_xp; level++; max_xp = Math.floor(max_xp * 1.2); 
+                const reward = level * 100; playSfx('levelup'); alert(`LEVEL UP! You reached Level ${level}. Reward: ${reward} Gems!`);
+                await updateDoc(userDocRef, { currency: increment(reward) });
+            }
+            await updateDoc(userDocRef, { "leveling.level": level, "leveling.xp": xp, "leveling.max_xp": max_xp });
+        }
+
+        window.checkDaily = () => {
+            const today = new Date().toDateString(); const last = GAME_STATE.daily.last_claim;
+            const grid = document.getElementById('daily-grid'); grid.innerHTML = '';
+            for(let i=1; i<=30; i++) {
+                let statusClass = "bg-slate-800 text-slate-500"; if (i < GAME_STATE.daily.streak + 1) statusClass = "bg-green-900/50 text-green-400 border border-green-500"; if (i === GAME_STATE.daily.streak + 1) statusClass = "bg-yellow-900/50 text-yellow-400 border border-yellow-500 animate-pulse"; 
+                let rewardAmt = i * 10; if(i % 5 === 0) rewardAmt *= 2; 
+                grid.innerHTML += `<div class="p-2 rounded flex flex-col items-center justify-center text-xs ${statusClass}"><span>H-${i}</span><i class="fas fa-gem mt-1"></i><span>${rewardAmt}</span></div>`;
+            }
+            const btn = document.getElementById('btn-claim-daily');
+            if (last === today) { btn.disabled = true; btn.innerText = "SUDAH KLAIM HARI INI"; btn.className = "w-full bg-slate-700 text-slate-400 font-bold py-3 rounded-lg"; } 
+            else { btn.disabled = false; btn.innerText = "KLAIM HADIAH"; btn.className = "w-full bg-green-600 text-white font-bold py-3 rounded-lg shadow-lg animate-pulse"; }
+            window.showModal('daily-modal');
+        }
+
+        window.claimDailyReward = async () => {
+            const today = new Date().toDateString(); let streak = GAME_STATE.daily.streak + 1; if (streak > 30) streak = 1; 
+            let reward = streak * 10; if(streak % 5 === 0) reward *= 2;
+            playSfx('buy'); await updateDoc(userDocRef, { currency: increment(reward), "daily.last_claim": today, "daily.streak": streak });
+            alert(`HARI KE-${streak}: Anda menerima ${reward} Gems!`); window.checkDaily(); 
+        }
+
+        window.navigateTo = (screenId) => {
+            playSfx('click');
+            if(screenId === 'menu') { document.querySelectorAll('#content-area > div').forEach(el => el.classList.add('hidden')); document.getElementById('screen-menu').classList.remove('hidden'); document.getElementById('footer-nav').classList.add('hidden'); updateUI(); return; }
+            document.querySelectorAll('#content-area > div').forEach(el => el.classList.add('hidden')); document.getElementById(`screen-${screenId}`).classList.remove('hidden');
+            document.getElementById('footer-nav').classList.toggle('hidden', screenId === 'menu'); updateUI(); 
+        }
+        window.showModal = (id) => { playSfx('click'); document.getElementById(id).classList.remove('hidden'); }
+        window.resetGame = async () => { if(confirm("Yakin ingin mereset progress?")) { await setDoc(userDocRef, { currency: 1000, inventory_unopened: [], inventory_opened: [], missions_completed: [], stats: { spent: 0, opened: 0, best_rarity: 0 }, daily: { last_claim: null, streak: 0 }, leveling: { level: 1, xp: 0, max_xp: 500 }, redeemed_codes: [], profile: { avatar: '👤', title: 'Novice' } }); location.reload(); } }
+        
+        window.showStats = () => {
+            const stats = GAME_STATE.stats || { spent: 0, opened: 0, best_rarity: 0 }; 
+            document.getElementById('stat-spent').innerText = stats.spent; document.getElementById('stat-opened').innerText = stats.opened;
+            const rMap = ["-", "Common", "Rare", "Epic", "Legendary", "Mythic", "Exotic", "Divine", "Ultra Secret"]; 
+            const best = rMap[stats.best_rarity] || "Belum Ada"; 
+            document.getElementById('stat-best').innerText = best; 
+            document.getElementById('stat-best').style.color = stats.best_rarity >= 6 ? '#ffd700' : (stats.best_rarity === 5 ? '#f59e0b' : '#e0e7ff');
+            let luck = 'F'; 
+            if(stats.best_rarity >= 3) luck = 'B'; if(stats.best_rarity >= 4) luck = 'A'; if(stats.best_rarity >= 5) luck = 'SS'; if(stats.best_rarity >= 7) luck = 'GOD';
+            const luckEl = document.getElementById('stat-luck'); luckEl.innerText = luck; luckEl.className = "text-xl font-bold " + (luck === 'SS' ? 'text-cyan-400' : (luck === 'GOD' ? 'text-yellow-400' : 'text-slate-400'));
+            
+            const playerScore = Math.floor((stats.spent * 0.5) + (stats.opened * 10) + (stats.best_rarity * 5000));
+            const timeSeed = Math.floor(Date.now() / 60000); 
+            const allParticipants = RIVALS_DB.map(r => ({ ...r, score: r.basePoints + (r.growth * (timeSeed % 1000)) }));
+            
+            allParticipants.push({ name: "ANDA", avatar: GAME_STATE.profile.avatar, score: playerScore, isPlayer: true });
+            allParticipants.sort((a,b) => b.score - a.score);
+
+            const lbList = document.getElementById('leaderboard-list');
+            lbList.innerHTML = '';
+            
+            allParticipants.forEach((p, idx) => {
+                const rank = idx + 1;
+                const isPlayer = p.isPlayer;
+                const defeated = isPlayer ? false : (playerScore > p.score);
+                const claimed = isPlayer ? false : GAME_STATE.rivals_defeated.includes(p.name);
+                let rankClass = "border-l-4 border-transparent bg-slate-900/30";
+                if(rank === 1) rankClass = "rank-1"; if(rank === 2) rankClass = "rank-2"; if(rank === 3) rankClass = "rank-3";
+                if(isPlayer) rankClass = "bg-violet-900/50 border-l-4 border-violet-500";
+
+                let actionBtn = '';
+                if (!isPlayer && defeated && !claimed) {
+                    actionBtn = `<button onclick="window.claimRivalReward('${p.name}', ${p.reward})" class="bg-yellow-500 text-black text-[10px] font-bold px-2 py-1 rounded animate-pulse">CLAIM ${p.reward}💎</button>`;
+                } else if (!isPlayer && claimed) {
+                    actionBtn = `<span class="text-[10px] text-green-500"><i class="fas fa-check"></i></span>`;
+                }
+
+                lbList.innerHTML += `
+                <div class="flex items-center justify-between p-2 rounded ${rankClass} mb-1">
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold font-mono text-slate-400 w-6 text-center">${rank}</span>
+                        <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-sm">${p.avatar}</div>
+                        <div>
+                            <p class="text-xs font-bold text-white ${isPlayer ? 'text-cyan-300' : ''}">${p.name}</p>
+                            <p class="text-[10px] text-slate-500">${p.score.toLocaleString()} Pts</p>
+                        </div>
+                    </div>
+                    <div>${actionBtn}</div>
+                </div>`;
+            });
+            window.showModal('stats-modal');
+        }
+
+        window.claimRivalReward = async (rivalName, reward) => {
+            playSfx('reward');
+            await updateDoc(userDocRef, { currency: increment(reward), rivals_defeated: arrayUnion(rivalName) });
+            alert(`HEBAT! Anda mengalahkan ${rivalName}.\nHadiah: ${reward} Gems.`);
+            window.showStats(); 
+        }
+
+        window.renderShop = () => {
+            const container = document.getElementById('shop-container'); container.innerHTML = '';
+            ITEM_SHOP_DB.forEach(item => { 
+                container.innerHTML += `
+                <div class="glass-panel p-2 flex flex-col items-center gap-1 relative overflow-hidden group min-h-[160px]">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-0"></div>
+                    <button onclick="window.buyItemBatch('${item.id}', 10)" class="absolute top-1 right-1 bg-yellow-600 text-white text-[9px] px-2 py-1 rounded-md z-30 font-bold hover:bg-yellow-500 shadow-md">x10</button>
+                    <img src="${item.icon}" alt="${item.name}" class="w-full h-20 object-cover rounded-lg bg-slate-900/50 z-10 group-hover:scale-105 transition duration-500">
+                    <p class="font-bold text-white text-xs text-center z-10 h-6 flex items-center justify-center leading-tight px-1">${item.name}</p>
+                    <button onclick="window.buyItem('${item.id}')" class="w-full mt-auto bg-violet-600 hover:bg-violet-500 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-1 z-20 flex-shrink-0 text-xs shadow-lg border border-violet-400/30">
+                        <i class="fas fa-gem text-yellow-300"></i> ${item.price}
+                    </button>
+                </div>`; 
+            });
+        }
+
+        window.renderInventory = () => {
+            const container = document.getElementById('inventory-container'); container.innerHTML = ''; if (GAME_STATE.inventory_unopened.length === 0) { container.innerHTML = `<div class="col-span-2 flex flex-col items-center mt-10 text-slate-400"><i class="fas fa-box-open text-4xl mb-2"></i><p>Inventaris kosong.</p><button onclick="window.navigateTo('shop')" class="mt-4 text-cyan-400 underline">Pergi ke Toko</button></div>`; return; }
+            GAME_STATE.inventory_unopened.forEach((item) => { const itemData = ITEM_SHOP_DB.find(dbItem => dbItem.id === item.baseId); if (!itemData) return; container.innerHTML += `<div class="glass-panel p-4 flex flex-col items-center gap-2 animate-fade"><img src="${itemData.icon}" alt="${itemData.name}" class="w-full h-32 object-cover rounded-lg bg-slate-900/50"><p class="font-bold text-white text-sm text-center">${itemData.name}</p><button onclick="window.prepareToOpen('${item.uniqueId}')" class="w-full bg-cyan-500 text-black font-bold py-2 rounded-lg hover:bg-cyan-400 transition">Buka</button></div>`; });
+        }
+        
+        window.renderCollection = () => {
+            const container = document.getElementById('collection-container'); container.innerHTML = ''; 
+            if (GAME_STATE.inventory_opened.length === 0) { container.innerHTML = `<p class="text-slate-400 col-span-3 text-center mt-10">Koleksi kosong.</p>`; return; }
+            let sortedInventory = [...GAME_STATE.inventory_opened];
+            
+            // Updated Rarity Map
+            const rMap = { "Ultra Secret": 8, "Divine": 7, "Exotic": 6, "Mythic":5, "Legendary":4, "Epic":3, "Rare":2, "Common":1 }; 
+            
+            if(currentFilter === 'rarity_desc') { sortedInventory.sort((a,b) => rMap[COLLECTION_DB[b.baseId].rarity] - rMap[COLLECTION_DB[a.baseId].rarity]); } 
+            else if(currentFilter === 'rarity_asc') { sortedInventory.sort((a,b) => rMap[COLLECTION_DB[a.baseId].rarity] - rMap[COLLECTION_DB[b.baseId].rarity]); } 
+            else if(currentFilter === 'value') { sortedInventory.sort((a,b) => COLLECTION_DB[b.baseId].sell - COLLECTION_DB[a.baseId].sell); }
+            sortedInventory.forEach((item) => {
+                const itemData = COLLECTION_DB[item.baseId]; if (!itemData) return;
+                const emojiIcon = EMOJI_MAP[item.baseId] || '❓';
+                container.innerHTML += `
+                    <div class="glass-panel p-2 flex flex-col items-center justify-between gap-1 ${'rarity-' + itemData.rarity.toLowerCase().replace(' ', '-')} relative group transition-transform duration-100 ease-out hover:scale-105">
+                        <div onclick="window.inspectItem('${item.uniqueId}')" class="cursor-pointer w-full flex flex-col items-center">
+                            <div class="text-4xl mt-2 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">${emojiIcon}</div>
+                            <p class="font-bold text-white text-[9px] text-center leading-tight w-full pointer-events-none mb-1">${itemData.name}</p>
+                            <span class="absolute top-1 right-1 bg-black/60 text-[8px] px-1 rounded text-white pointer-events-none border border-white/20">${itemData.rarity[0]}</span>
+                        </div>
+                        <button onclick="event.stopPropagation(); window.confirmSell('${item.uniqueId}')" class="w-full bg-red-600 hover:bg-red-500 text-white text-[10px] font-bold py-1 rounded border border-red-400/30 shadow z-20">JUAL</button>
+                    </div>`;
+            });
+        }
+
+        window.renderMissions = () => {
+            const container = document.getElementById('missions-container'); container.innerHTML = '';
+            const myOpenedItems = new Set(GAME_STATE.inventory_opened.map(item => item.baseId));
+            MISSION_DB.forEach(mission => {
+                let hasAll = true; for (const req of mission.required) { if (!myOpenedItems.has(req)) { hasAll = false; break; } }
+                const isCompleted = GAME_STATE.missions_completed.includes(mission.id);
+                container.innerHTML += `<div class="glass-panel p-4 ${isCompleted ? 'opacity-50 grayscale' : ''} transition"><div class="flex justify-between items-start"><h4 class="font-bold text-lg ${isCompleted ? 'text-green-400' : 'text-cyan-400'}">${mission.name}</h4>${isCompleted ? '<i class="fas fa-check-circle text-green-400"></i>' : ''}</div><p class="text-sm text-slate-300 mb-3">${mission.desc}</p><button onclick="window.claimMission('${mission.id}')" ${!hasAll || isCompleted ? 'disabled' : ''} class="w-full bg-green-600 text-white font-bold py-2 rounded-lg disabled:bg-slate-700 disabled:text-slate-500 hover:bg-green-500 transition">${isCompleted ? 'Selesai' : (hasAll ? `Klaim (${mission.reward} Gems + 200 XP)` : 'Belum Lengkap')}</button></div>`;
+            });
+        }
+        
+        window.buyItem = async (itemId) => {
+            const itemData = ITEM_SHOP_DB.find(i => i.id === itemId); if (!itemData) return;
+            if (GAME_STATE.currency < itemData.price) { alert("Gems tidak cukup!"); return; }
+            playSfx('buy');
+            const newItem = { uniqueId: `unopened_${Date.now()}_${Math.random()}`, baseId: itemData.id, type: itemData.type };
+            await updateDoc(userDocRef, { currency: increment(-itemData.price), inventory_unopened: arrayUnion(newItem), "stats.spent": increment(itemData.price) });
+            await addXP(20); 
+        }
+
+        window.buyItemBatch = async (itemId, count) => {
+            const itemData = ITEM_SHOP_DB.find(i => i.id === itemId); if (!itemData) return;
+            const totalPrice = itemData.price * count;
+            if (GAME_STATE.currency < totalPrice) { alert("Gems tidak cukup!"); return; }
+            playSfx('buy');
+            
+            const newItems = [];
+            for(let i=0; i<count; i++) {
+                newItems.push({ uniqueId: `unopened_${Date.now()}_${i}_${Math.random()}`, baseId: itemData.id, type: itemData.type });
+            }
+            
+            await updateDoc(userDocRef, { currency: increment(-totalPrice), inventory_unopened: arrayUnion(...newItems), "stats.spent": increment(totalPrice) });
+            alert(`${count}x ${itemData.name} berhasil dibeli!`);
+            await addXP(20 * count); 
+        }
+        
+        let itemToOpen = null;
+        window.prepareToOpen = (uniqueId) => {
+            itemToOpen = GAME_STATE.inventory_unopened.find(item => item.uniqueId === uniqueId); if (!itemToOpen) return;
+            playSfx('open_start');
+            const itemShopData = ITEM_SHOP_DB.find(i => i.id === itemToOpen.baseId);
+            window.navigateTo('opening');
+            if (itemToOpen.type === 'tcg') {
+                document.getElementById('tcg-opener-anim').classList.remove('hidden'); document.getElementById('crate-opener-anim').classList.add('hidden');
+                document.getElementById('opening-reveal-btn').classList.remove('hidden'); document.getElementById('opening-close-btn').classList.add('hidden');
+                document.getElementById('tcg-reveal-card').innerHTML = ''; document.querySelector('.opening-card-container').classList.remove('reveal');
+            } else {
+                document.getElementById('tcg-opener-anim').classList.add('hidden'); document.getElementById('crate-opener-anim').classList.remove('hidden');
+                document.getElementById('opening-reveal-btn').classList.add('hidden'); document.getElementById('opening-close-btn').classList.add('hidden');
+                startCrateAnimation(itemShopData.pool);
+            }
+        }
+        
+        function getWeightedRandom(pool) {
+            const weightedPool = []; pool.forEach(itemId => { const item = COLLECTION_DB[itemId]; if(!item) return; if(item.rarity === 'Common') for(let i=0; i<10; i++) weightedPool.push(item); if(item.rarity === 'Rare') for(let i=0; i<5; i++) weightedPool.push(item); if(item.rarity === 'Epic') for(let i=0; i<3; i++) weightedPool.push(item); if(item.rarity === 'Legendary') for(let i=0; i<2; i++) weightedPool.push(item); if(item.rarity === 'Mythic') weightedPool.push(item); if(item.rarity === 'Exotic') weightedPool.push(item); if(item.rarity === 'Divine') weightedPool.push(item); if(item.rarity === 'Ultra Secret') weightedPool.push(item); }); return weightedPool[Math.floor(Math.random() * weightedPool.length)];
+        }
+        
+        async function startCrateAnimation(pool) {
+            const reel = document.getElementById('crate-anim-reel'); reel.innerHTML = ''; reel.style.transform = 'translateX(0px)';
+            let items = []; for (let i = 0; i < 30; i++) { items.push(getWeightedRandom(pool)); }
+            const winner = items[27];
+            items.forEach(item => { reel.innerHTML += `<div class="w-32 h-32 p-2 mx-1 glass-panel ${'rarity-' + item.rarity.toLowerCase().replace(' ', '-')} flex items-center justify-center flex-shrink-0"><img src="${item.icon}" class="w-full h-full object-contain"></div>`; });
+            const cardWidth = 136; const viewportWidth = document.getElementById('crate-opener-anim').clientWidth; const offset = ((27 * cardWidth) + (cardWidth / 2)) - (viewportWidth / 2);
+            setTimeout(() => { reel.style.transition = 'transform 5s cubic-bezier(0.1, 0.9, 0.3, 1)'; reel.style.transform = `translateX(-${offset}px)`; }, 100);
+            setTimeout(() => { playSfx('open_reveal'); showAcquiredItemModal(winner); document.getElementById('opening-close-btn').classList.remove('hidden'); processAcquiredItem(winner, itemToOpen.uniqueId); }, 5500);
+        }
+
+        window.revealItem = () => {
+            const itemShopData = ITEM_SHOP_DB.find(i => i.id === itemToOpen.baseId); const winner = getWeightedRandom(itemShopData.pool); playSfx('open_reveal');
+            const cardBack = document.getElementById('tcg-reveal-card');
+            const emojiIcon = EMOJI_MAP[Object.keys(COLLECTION_DB).find(key => COLLECTION_DB[key].name === winner.name)] || '❓';
+            cardBack.innerHTML = `<div class="w-full h-full p-2 ${'rarity-' + winner.rarity.toLowerCase().replace(' ', '-')} rounded-lg flex flex-col items-center justify-center bg-slate-900 border border-white/10"><div class="text-7xl animate-pulse filter drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">${emojiIcon}</div><p class="font-bold text-white text-lg mt-4 text-center font-title tracking-wider">${winner.name}</p><p class="font-bold text-xs uppercase tracking-widest mt-1" style="color: ${winner.rarity === 'Ultra Secret' ? '#ff00ff' : '#e0e7ff'}">${winner.rarity}</p></div>`;
+            document.querySelector('.opening-card-container').classList.add('reveal'); document.getElementById('opening-reveal-btn').classList.add('hidden');
+            setTimeout(() => { showAcquiredItemModal(winner); document.getElementById('opening-close-btn').classList.remove('hidden'); processAcquiredItem(winner, itemToOpen.uniqueId); }, 1000);
+        }
+        
+        async function processAcquiredItem(itemData, unopenedUniqueId) {
+            const newItem = { uniqueId: `opened_${Date.now()}_${Math.random()}`, baseId: Object.keys(COLLECTION_DB).find(key => COLLECTION_DB[key].name === itemData.name) };
+            const unopenedItemToRemove = GAME_STATE.inventory_unopened.find(i => i.uniqueId === unopenedUniqueId);
+            const rarityVal = { "Common": 1, "Rare": 2, "Epic": 3, "Legendary": 4, "Mythic": 5, "Exotic": 6, "Divine": 7, "Ultra Secret": 8 }; const currentVal = rarityVal[itemData.rarity] || 1; const currentBest = GAME_STATE.stats ? (GAME_STATE.stats.best_rarity || 0) : 0; const newBest = Math.max(currentVal, currentBest);
+            const batch = writeBatch(db);
+            batch.update(userDocRef, { inventory_unopened: arrayRemove(unopenedItemToRemove), inventory_opened: arrayUnion(newItem), "stats.opened": increment(1), "stats.best_rarity": newBest });
+            await batch.commit(); await addXP(50); 
+        }
+        
+        function showAcquiredItemModal(item) {
+            const isHolo = ['Epic', 'Mythic', 'Legendary', 'Exotic', 'Divine', 'Ultra Secret'].includes(item.rarity);
+            const emojiIcon = EMOJI_MAP[Object.keys(COLLECTION_DB).find(key => COLLECTION_DB[key].name === item.name)] || '❓';
+            const content = document.getElementById('item-acquired-content');
+            content.innerHTML = `<p class="text-sm text-slate-300">Anda Mendapatkan:</p><div class="my-4 p-4 rounded-lg ${'rarity-' + item.rarity.toLowerCase().replace(' ', '-')} bg-slate-900 ${isHolo ? 'holo-card' : ''} flex items-center justify-center h-40"><div class="text-7xl">${emojiIcon}</div></div><h3 class="text-2xl font-bold text-white">${item.name}</h3><p class="text-lg font-bold uppercase tracking-widest mt-2" style="color: ${item.rarity === 'Ultra Secret' ? '#ff00ff' : '#e0e7ff'}">${item.rarity}</p><button onclick="document.getElementById('item-acquired-modal').classList.add('hidden')" class="mt-6 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-6 rounded-lg w-full transition">OK</button>`;
+            document.getElementById('item-acquired-modal').classList.remove('hidden');
+        }
+        
+        window.closeOpeningScreen = () => { window.navigateTo('inventory'); document.getElementById('item-acquired-modal').classList.add('hidden'); }
+        
+        window.confirmSell = (uniqueId) => {
+            const item = GAME_STATE.inventory_opened.find(i => i.uniqueId === uniqueId); if(!item) return;
+            const itemData = COLLECTION_DB[item.baseId]; 
+            document.getElementById('sell-price-display').innerText = `+${itemData.sell}`; 
+            document.getElementById('sell-confirm-btn').onclick = () => window.sellItem(uniqueId); 
+            window.showModal('sell-modal');
+        }
+
+        window.sellItem = async (uniqueId) => {
+            const item = GAME_STATE.inventory_opened.find(i => i.uniqueId === uniqueId); if(!item) return;
+            const itemData = COLLECTION_DB[item.baseId]; 
+            playSfx('sell'); 
+            await updateDoc(userDocRef, { currency: GAME_STATE.currency + itemData.sell, inventory_opened: arrayRemove(item) }); 
+            document.getElementById('sell-modal').classList.add('hidden');
+        }
+
+        window.claimMission = async (missionId) => {
+            const mission = MISSION_DB.find(m => m.id === missionId); if(!mission || GAME_STATE.missions_completed.includes(missionId)) return; 
+            playSfx('buy'); 
+            await updateDoc(userDocRef, { currency: GAME_STATE.currency + mission.reward, missions_completed: arrayUnion(missionId) });
+            await addXP(200);
+            window.renderMissions(); 
+        }
+    </script>
+</body>
+</html>
