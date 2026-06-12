@@ -83,12 +83,9 @@
         }
 
         .game-card.placeholder { cursor: default; }
-
         .category-title { text-shadow: 0 0 8px #a78bfa; }
-        
         .icon-link svg, .icon-link i { transition: all 0.3s ease; fill: #a78bfa; color: #a78bfa; }
         .icon-link:hover svg, .icon-link:hover i { fill: #c4b5fd; color: #c4b5fd; transform: scale(1.1); }
-        
         .clickable { cursor: pointer; }
 
         #game-info-modal.hidden {
@@ -140,6 +137,7 @@
                     </div>
                 </div>
 
+                <!-- Bagian Khusus KFFS Report -->
                 <div class="card p-6 md:col-span-2 flex flex-col md:flex-row items-center justify-between gap-6">
                     <div class="flex-1 text-center md:text-left">
                         <h2 class="font-display text-2xl mb-2 text-violet-300">
@@ -163,10 +161,11 @@
             
             <section id="game-gallery" class="space-y-12">
                 
+                <!-- Kategori 1: Kelas & Keluarga -->
                 <div>
                     <h3 class="font-display text-2xl mb-6 category-title text-violet-300">Sistem Bintang: Kelas & Keluarga</h3>
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-6">
-                        <a href="/Nebula-kreatif/kuis-kelas/" class="game-card group clickable" 
+                        <a href="kuis-kelas/" class="game-card group clickable" 
                            data-title="Quiz Kelas" 
                            data-description="Seberapa baik kamu mengenal teman-temanmu? Uji kedekatanmu dengan menjawab pertanyaan-pertanyaan unik dan seru seputar anak-anak kelas X1. Buktikan kalau kamulah yang paling tahu segalanya! Mode: Sendiri.">
                             <i class="fa-solid fa-book-open-reader text-violet-300 text-5xl sm:text-6xl mb-2 sm:mb-4 group-hover:text-white transition-colors"></i>
@@ -182,10 +181,11 @@
                     </div>
                 </div>
 
+                <!-- Kategori 2: Ilmu & Pengetahuan -->
                 <div>
                     <h3 class="font-display text-2xl mb-6 category-title text-violet-300">Sistem Bintang: Ilmu & Pengetahuan</h3>
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-6">
-                        <a href="/Nebula-kreatif/duel-otak/" class="game-card group clickable"
+                        <a href="duel-otak/" class="game-card group clickable"
                            data-title="Duel Otak"
                            data-description="Adu kecepatan dan ketepatan dalam menjawab berbagai pertanyaan trivia pengetahuan umum. Ajak temanmu dan buktikan siapa yang paling cerdas dalam mode multiplayer ini!">
                              <i class="fa-solid fa-brain text-violet-300 text-5xl sm:text-6xl mb-2 sm:mb-4 group-hover:text-white transition-colors"></i>
@@ -194,7 +194,7 @@
                                 <i class="fa-solid fa-circle-info text-xl"></i>
                             </button>
                         </a>
-                        <a href="/Nebula-kreatif/cheat-kamus-kbbi/" class="game-card group clickable"
+                        <a href="cheat-sambung-kata/" class="game-card group clickable"
                            data-title="Cheat Kamus KBBI"
                            data-description="Alat bantu canggih untuk permainan Sambung Kata! Temukan kata-kata valid dalam KBBI dengan cepat dan jadilah master kosakata yang tak terkalahkan. Mode: Alat/Utilitas.">
                              <i class="fa-solid fa-spell-check text-violet-300 text-5xl sm:text-6xl mb-2 sm:mb-4 group-hover:text-white transition-colors"></i>
@@ -203,7 +203,7 @@
                                 <i class="fa-solid fa-circle-info text-xl"></i>
                             </button>
                         </a>
-                        <a href="/Nebula-kreatif/kbbi-kata-sulit/" class="game-card group clickable"
+                        <a href="procheat-sambungkata/" class="game-card group clickable"
                            data-title="KBBI Kata Sulit"
                            data-description="Senjata rahasia pamungkas untuk game Sambung Kata! Cari dan gunakan kata-kata yang sulit dan langka di KBBI untuk mengecoh dan mematikan pergerakan lawanmu. Skakmat! Mode: Alat/Utilitas.">
                              <i class="fa-solid fa-bomb text-violet-300 text-5xl sm:text-6xl mb-2 sm:mb-4 group-hover:text-white transition-colors"></i>
@@ -217,10 +217,11 @@
                     </div>
                 </div>
 
+                <!-- Kategori 3: Simulasi -->
                 <div>
                     <h3 class="font-display text-2xl mb-6 category-title text-violet-300">Sistem Bintang: Simulasi</h3>
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-6">
-                        <a href="/Nebula-kreatif/pendeteksi-kebohongan/" class="game-card group clickable"
+                        <a href="deteksi-kebohongan/" class="game-card group clickable"
                            data-title="Pendeteksi Kebohongan"
                            data-description="Apakah temanmu jujur? Gunakan simulasi pendeteksi kebohongan canggih ini untuk mencari tahu! Aplikasi seru untuk bercanda. Mode: Hiburan.">
                              <i class="fa-solid fa-fingerprint text-violet-300 text-5xl sm:text-6xl mb-2 sm:mb-4 group-hover:text-white transition-colors"></i>
@@ -229,7 +230,7 @@
                                 <i class="fa-solid fa-circle-info text-xl"></i>
                             </button>
                         </a>
-                        <a href="/Nebula-kreatif/musik-ai-canggih/" class="game-card group clickable"
+                        <a href="appmusic/" class="game-card group clickable"
                            data-title="Musik AI Canggih"
                            data-description="Ciptakan harmoni futuristik dengan kecerdasan buatan! Eksperimen dengan algoritma nada dan irama untuk menghasilkan komposisi musik yang unik. Mode: Kreatif/Solo.">
                              <i class="fa-solid fa-music text-violet-300 text-5xl sm:text-6xl mb-2 sm:mb-4 group-hover:text-white transition-colors"></i>
@@ -244,10 +245,11 @@
                     </div>
                 </div>
 
+                <!-- Kategori 4: Seru, Aksi, Strategi, Puzzle dan Klasik -->
                 <div>
                     <h3 class="font-display text-2xl mb-6 category-title text-violet-300">Sistem Bintang: Seru, Aksi, Strategi, Puzzle dan Klasik</h3>
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-6">
-                        <a href="/Nebula-kreatif/tic-tac-toe/" class="game-card group clickable"
+                        <a href="tictactoe-universe/" class="game-card group clickable"
                            data-title="Tic Tac Toe Universe"
                            data-description="Permainan klasik Tic Tac Toe dengan sentuhan kosmik. Tantang temanmu dalam duel strategi sederhana namun mendalam. Mode: Multiplayer.">
                              <i class="fa-solid fa-table-cells text-violet-300 text-5xl sm:text-6xl mb-2 sm:mb-4 group-hover:text-white transition-colors"></i>
@@ -256,7 +258,7 @@
                                 <i class="fa-solid fa-circle-info text-xl"></i>
                             </button>
                         </a>
-                        <a href="/Nebula-kreatif/hangman-tebak-kata/" class="game-card group clickable"
+                        <a href="hangman/" class="game-card group clickable"
                            data-title="Hangman: Tebak Kata"
                            data-description="Tebak kata tersembunyi huruf demi huruf sebelum astronotmu melayang! Permainan kata klasik yang menguji kosakatamu. Mode: Solo.">
                              <i class="fa-solid fa-font text-violet-300 text-5xl sm:text-6xl mb-2 sm:mb-4 group-hover:text-white transition-colors"></i>
@@ -265,7 +267,7 @@
                                 <i class="fa-solid fa-circle-info text-xl"></i>
                             </button>
                         </a>
-                        <a href="/Nebula-kreatif/magic-chess/" class="game-card group clickable"
+                        <a href="anichess/" class="game-card group clickable"
                            data-title="Catur Unik (Magic)"
                            data-description="Permainan catur klasik dengan sentuhan magis! Setiap bidak mungkin memiliki kemampuan unik. Mode: Multiplayer.">
                              <i class="fa-solid fa-chess text-violet-300 text-5xl sm:text-6xl mb-2 sm:mb-4 group-hover:text-white transition-colors"></i>
@@ -274,7 +276,7 @@
                                 <i class="fa-solid fa-circle-info text-xl"></i>
                             </button>
                         </a>
-                        <a href="/Nebula-kreatif/kolektor-archon/" class="game-card group clickable"
+                        <a href="archon-collector/" class="game-card group clickable"
                            data-title="Kolektor Archon"
                            data-description="Jelajahi dimensi lain dan kumpulkan artefak Archon yang legendaris. Hindari bahaya yang mengintai! Mode: Solo.">
                              <i class="fa-solid fa-gem text-violet-300 text-5xl sm:text-6xl mb-2 sm:mb-4 group-hover:text-white transition-colors"></i>
@@ -296,10 +298,11 @@
                     </div>
                 </div>
 
+                <!-- Kategori 5: Sandbox & Have Fun -->
                 <div>
                     <h3 class="font-display text-2xl mb-6 category-title text-violet-300">Sistem Bintang: Sandbox & Have Fun</h3>
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-6">
-                        <a href="/Nebula-kreatif/tebak-kartu/" class="game-card group clickable"
+                        <a href="tebak-kartu/" class="game-card group clickable"
                            data-title="Tebak Kartu"
                            data-description="Uji intuisimu dan keberuntunganmu! Bisakah kamu menebak kartu yang benar? Mode: Solo / Multiplayer (1-4 orang).">
                                <div class="tile-icon text-5xl sm:text-6xl mb-2 sm:mb-4">⁉️</div>
@@ -308,7 +311,7 @@
                                 <i class="fa-solid fa-circle-info text-xl"></i>
                             </button>
                         </a>
-                        <a href="/Nebula-kreatif/kasino-kosmik/" class="game-card group clickable"
+                        <a href="archon-casino/" class="game-card group clickable"
                            data-title="Kasino Kosmik"
                            data-description="Uji keberuntunganmu di Kasino Kosmik! Mainkan berbagai game peluang dan raih 'jackpot'. Mode: Solo.">
                              <i class="fa-solid fa-dice text-violet-300 text-5xl sm:text-6xl mb-2 sm:mb-4 group-hover:text-white transition-colors"></i>
@@ -326,6 +329,7 @@
         </main>
     </div>
 
+    <!-- Modal -->
     <div id="game-info-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-opacity duration-300">
         <div class="card max-w-lg w-full p-6 relative">
             <button id="modal-close-btn" class="absolute top-4 right-4 text-violet-300 hover:text-white transition-colors">
