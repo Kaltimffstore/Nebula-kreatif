@@ -1,10 +1,11 @@
+```react
 import React, { useState, useEffect, useRef } from 'react';
 import * as Tone from 'tone';
 import { 
   Play, Square, Activity, Music, Wand2, 
   Sliders, Piano, Grid, ListMusic, X, 
   BrainCircuit, Sparkles, Key, Guitar, 
-  Music4, HelpCircle, Instagram, Phone
+  Music4, HelpCircle, Instagram, Phone, Link2
 } from 'lucide-react';
 
 // --- DATA PRESET ---
@@ -44,7 +45,7 @@ const getScaleNotes = (root, scaleType, octaves = [3, 4]) => {
   return scaleNotes;
 };
 
-// KOMPONEN UTAMA WAJIB BERNAMA 'App' AGAR BISA DIRENDER
+// KOMPONEN UTAMA
 export default function App() {
   const [activeView, setActiveView] = useState('SEQUENCER'); 
   const [tracks, setTracks] = useState(INITIAL_TRACKS);
@@ -118,7 +119,7 @@ export default function App() {
           envelope: { attack: 0.02, decay: 0.1, sustain: 0.3, release: 1 },
         }).connect(reverb);
 
-        // Simulated Pluck for Guitar (Sangat stabil dibanding PluckSynth murni)
+        // Simulated Pluck for Guitar
         const guitarSynth = new Tone.PolySynth(Tone.Synth, {
           oscillator: { type: "fmtriangle", modulationType: "sine", modulationIndex: 3 },
           envelope: { attack: 0.01, decay: 0.5, sustain: 0, release: 0.5 }
@@ -349,7 +350,7 @@ export default function App() {
   const togglePlay = async () => {
     if (!isReady) {
         await initAudio();
-        return; // Mencegah play ganda saat init
+        return; 
     }
     if (isPlaying) {
       Tone.Transport.stop();
@@ -594,7 +595,7 @@ export default function App() {
         {activeView === 'MIXER' && <MixerView />}
       </main>
 
-      {/* FLOAT BUTTON: ABOUT (TETAP DI ATAS DENGAN Z-[100]) */}
+      {/* FLOAT BUTTON: ABOUT */}
       <div className="fixed bottom-6 right-6 z-[100]">
         <button 
             onClick={() => { playUIClick(true); setShowAbout(true); }}
@@ -613,35 +614,30 @@ export default function App() {
                     Neon Studio adalah Digital Audio Workstation (DAW) berbasis Web. Ciptakan musik kompleks hanya dengan teks (Omniverse AI), dan mainkan instrumen tanpa fals dengan Magic Touch.
                 </p>
                 
-                <div className="mt-6 border-t border-gray-700 pt-4 text-left">
-                    <h4 className="font-semibold text-white mb-2 text-sm">Catatan Versi</h4>
-                    <ul className="text-xs text-green-400 list-disc pl-5 space-y-1">
-                        <li><b>FIXED:</b> Komponen utama menggunakan fungsi App().</li>
-                        <li><b>FIXED:</b> Memori bocor pada visualizer telah ditambal.</li>
-                        <li><b>FIXED:</b> Synth diganti versi FMSynth agar stabil 100%.</li>
-                    </ul>
+                <p className="text-gray-400 mt-6 mb-1 text-xs">Dibuat oleh:</p>
+                <p className="text-lg font-semibold text-white mb-6">Deny Kusrianto</p>
+                
+                {/* TIGA TOMBOL BARU TERMASUK LINK MUSIK */}
+                <div className="flex flex-wrap justify-center gap-3 mb-6">
+                    <a href="https://g.co/gemini/share/d252080149fa" target="_blank" rel="noreferrer" className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg inline-flex items-center text-xs transition-transform hover:scale-105 shadow-lg w-[45%] justify-center">
+                        <Link2 size={16} className="mr-2"/> Cek Musik AI
+                    </a>
+                    <a href="https://www.instagram.com/kaltimff_store?igsh=bWlzeHpiZ281djN4" target="_blank" rel="noreferrer" className="bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded-lg inline-flex items-center text-xs transition-transform hover:scale-105 shadow-lg w-[45%] justify-center">
+                        <Instagram size={16} className="mr-2"/> Instagram
+                    </a>
+                    <a href="https://wa.me/message/JNJFBTFD773MB1" target="_blank" rel="noreferrer" className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg inline-flex items-center text-xs transition-transform hover:scale-105 shadow-lg w-[94%] justify-center mt-1">
+                        <Phone size={16} className="mr-2"/> WhatsApp Developer
+                    </a>
                 </div>
 
-                <div className="mt-6 border-t border-gray-700 pt-4 text-left">
+                <div className="border-t border-gray-700 pt-4 text-left">
                     <h4 className="font-semibold text-sm text-white mb-2">Informasi Hak Cipta</h4>
                     <p className="text-[10px] text-gray-500 leading-relaxed">
                         Aplikasi ini dilindungi hak cipta. Dilarang mendistribusikan ulang atau memodifikasi tanpa izin pembuat aslinya.
                     </p>
                 </div>
                 
-                <p className="text-gray-400 mt-6 mb-1 text-xs">Dibuat oleh:</p>
-                <p className="text-lg font-semibold text-white mb-6">Deny Kusrianto</p>
-                
-                <div className="flex justify-center gap-4 mb-6">
-                    <a href="https://www.instagram.com/kaltimff_store?igsh=bWlzeHpiZ281djN4" target="_blank" rel="noreferrer" className="bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded-lg inline-flex items-center text-xs transition-transform hover:scale-105 shadow-lg">
-                        <Instagram size={16} className="mr-2"/> Instagram
-                    </a>
-                    <a href="https://wa.me/message/JNJFBTFD773MB1" target="_blank" rel="noreferrer" className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg inline-flex items-center text-xs transition-transform hover:scale-105 shadow-lg">
-                        <Phone size={16} className="mr-2"/> WhatsApp
-                    </a>
-                </div>
-                
-                <button onClick={() => { playUIClick(); setShowAbout(false); }} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg w-full transition-colors border border-gray-600">Tutup</button>
+                <button onClick={() => { playUIClick(); setShowAbout(false); }} className="mt-4 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg w-full transition-colors border border-gray-600">Tutup</button>
             </div>
         </div>
       )}
@@ -706,3 +702,6 @@ export default function App() {
     </div>
   );
 }
+
+
+```
